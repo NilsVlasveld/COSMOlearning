@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cosmo">
+<meta name="theme-color" content="#6C6CE8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Cosmo — Ruimteleren</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#6C6CE8;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    touch-action:none; user-select:none; -webkit-user-select:none; }
+  #game { display:block; position:absolute; inset:0; }
+
+  .hud { position:absolute; top:max(14px,env(safe-area-inset-top)); pointer-events:none; z-index:10; }
+  #pts { right:14px; display:flex; align-items:center; gap:7px;
+    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:15px; padding:7px 14px; border-radius:16px; }
+  #pts .star { width:15px; height:15px; }
+  #name { left:14px; display:flex; align-items:center; gap:8px;
+    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:14px; padding:6px 13px; border-radius:16px; }
+  #name .dot { width:16px; height:16px; border-radius:50%; background:#33C9C6; border:1.5px solid #fff; }
+  #ubtn { position:absolute; top:calc(max(14px,env(safe-area-inset-top)) + 36px); left:14px; z-index:11; pointer-events:auto;
+    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:13px; border:none;
+    padding:7px 13px; border-radius:14px; cursor:pointer; }
+  #ubtn:active{ transform:scale(.96); }
+  #dimname { left:50%; transform:translateX(-50%); top:14px; opacity:0; transition:opacity .6s;
+    background:rgba(30,27,94,.8); color:#fff; font-weight:600; font-size:14px; padding:6px 16px; border-radius:14px; }
+
+  #hint { position:absolute; left:50%; transform:translateX(-50%); bottom:62px;
+    background:rgba(255,255,255,.16); color:#fff; font-weight:600; font-size:13px;
+    padding:7px 16px; border-radius:14px; pointer-events:none; transition:opacity .6s; z-index:10; }
+  #goal { position:absolute; left:50%; transform:translateX(-50%); bottom:max(16px,env(safe-area-inset-bottom)); width:min(86vw,360px);
+    background:rgba(30,27,94,.82); border-radius:14px; padding:8px 14px 9px; z-index:10; pointer-events:none; }
+  #goaltext { color:#fff; font-weight:600; font-size:12.5px; text-align:center; margin-bottom:6px; }
+  #goalbar { height:6px; background:rgba(255,255,255,.2); border-radius:4px; overflow:hidden; }
+  #goalfill { height:100%; width:0%; background:#FFD24A; border-radius:4px; transition:width .4s; }
+
+  .overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(20,18,70,.55); padding:18px; z-index:20; }
+  .overlay.show { display:flex; }
+  .card { width:100%; max-width:440px; background:#6C6CE8; border:4px solid #1E1B5E; border-radius:26px;
+    padding:20px 18px 22px; text-align:center; color:#fff; box-shadow:0 10px 40px rgba(20,18,70,.4); max-height:92vh; overflow-y:auto; }
+  .mg-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .pill { background:rgba(255,255,255,.18); font-size:13px; font-weight:600; padding:5px 12px; border-radius:12px; }
+  .qbox { background:#C2E1F8; color:#1E1B5E; border:3.5px solid #1E1B5E; border-radius:20px;
+    padding:18px 10px; font-size:34px; font-weight:700; margin:6px 0 20px; min-height:78px; display:flex; align-items:center; justify-content:center; }
+  .qbox.seq { font-size:24px; letter-spacing:1px; }
+  .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .ans { flex:1 1 0; min-width:78px; max-width:120px; aspect-ratio:1/1; border:3.5px solid #1E1B5E; border-radius:50%;
+    background:#FFE7A0; color:#1E1B5E; font-size:26px; font-weight:700; cursor:pointer; transition:transform .1s; }
+  .ans:nth-child(2){ background:#C8E6A0; } .ans:nth-child(3){ background:#F4B9CE; }
+  .ans:active{ transform:scale(.94); } .ans.good{ background:#7BE0A0 !important; } .ans.bad{ background:#F08A8A !important; } .ans:disabled{ cursor:default; }
+  .mg-msg { font-size:22px; font-weight:700; margin:8px 0 16px; }
+  .mg-sub { font-size:15px; font-weight:500; opacity:.92; margin-bottom:20px; line-height:1.5; }
+  .btn { background:#FFD24A; color:#1E1B5E; border:3.5px solid #1E1B5E; border-radius:16px; font-size:17px; font-weight:700; padding:13px 30px; cursor:pointer; }
+  .btn:active{ transform:scale(.97); }
+  .btn.ghost { background:transparent; color:#fff; border-color:rgba(255,255,255,.5); font-size:14px; padding:9px 18px; }
+  .stars-earned{ font-size:28px; margin:4px 0 12px; line-height:1.3; }
+
+  .tier { display:flex; align-items:center; gap:10px; text-align:left; background:rgba(255,255,255,.1);
+    border-radius:14px; padding:11px 13px; margin-bottom:9px; }
+  .tier.locked { opacity:.55; }
+  .tinfo { flex:1; }
+  .tname { font-size:15px; font-weight:700; }
+  .tdesc { font-size:12.5px; opacity:.9; margin-top:1px; }
+  .badge { font-size:13px; font-weight:700; padding:5px 11px; border-radius:11px; white-space:nowrap; }
+  .badge.done { background:#7BE0A0; color:#13502E; } .badge.lock { background:rgba(255,255,255,.2); color:#fff; }
+  .swatches { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
+  .sw { width:30px; height:30px; border-radius:50%; border:3px solid #1E1B5E; cursor:pointer; }
+  .sw:active{ transform:scale(.9); }
+  .lvlrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 4px; }
+  .lvlbtn { background:rgba(255,255,255,.14); color:#fff; border:2.5px solid rgba(255,255,255,.4);
+    border-radius:12px; font-size:14px; font-weight:700; padding:8px 12px; cursor:pointer; min-width:54px; }
+  .lvlbtn.sel { background:#FFD24A; color:#1E1B5E; border-color:#1E1B5E; }
+
+  #toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.8);
+    background:#FFD24A; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:18px; font-size:18px; font-weight:700;
+    padding:12px 22px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:25; text-align:center; max-width:80%; }
+  #toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud" id="name"><span class="dot"></span><span id="namelabel">Speler</span></div>
+<div class="hud" id="pts">
+  <svg class="star" viewBox="-8 -8 16 16"><path d="M0 -7 L1.6 -1.6 L7 0 L1.6 1.6 L0 7 L-1.6 1.6 L-7 0 L-1.6 -1.6 Z" fill="#FFD24A" stroke="#1E1B5E" stroke-width="1"/></svg>
+  <span id="ptsval">0</span>
+</div>
+<button id="ubtn">UFO upgrades</button>
+<div class="hud" id="dimname"></div>
+<div id="hint">Sleep om te vliegen — zoek de beams!</div>
+<div id="goal"><div id="goaltext">Nog 100 ★ tot het zwarte gat</div><div id="goalbar"><div id="goalfill"></div></div></div>
+<div id="toast"></div>
+<div id="mg" class="overlay"><div class="card" id="mgcard"></div></div>
+<div id="up" class="overlay"><div class="card" id="upcard"></div></div>
+<div id="start" class="overlay"><div class="card" id="startcard"></div></div>
+
+<script>
+const cv=document.getElementById('game'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){ DPR=Math.min(window.devicePixelRatio||1,2); W=window.innerWidth; H=window.innerHeight;
+  cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+'px'; cv.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+window.addEventListener('resize',resize); resize();
+
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function hexA(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+function ellipse(g,x,y,rx,ry){ g.beginPath(); g.ellipse(x,y,rx,ry,0,0,6.2832); }
+function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function star4(g,x,y,s){ g.beginPath(); g.moveTo(x,y-s); g.lineTo(x+s*0.32,y-s*0.32); g.lineTo(x+s,y); g.lineTo(x+s*0.32,y+s*0.32); g.lineTo(x,y+s); g.lineTo(x-s*0.32,y+s*0.32); g.lineTo(x-s,y); g.lineTo(x-s*0.32,y-s*0.32); g.closePath(); g.fill(); }
+
+const C_NAVY='#1E1B5E', C_BODY='#33C9C6', C_DOME='#A6E4EE', C_PINK='#F58BB0', C_LIGHT='#FFD24A', C_LEG='#8B7BD8';
+const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'plus'},
+  logica:{color:'#97C459',core:'#C8E6A0',label:'Logica',icon:'dots'},
+  lezen:{color:'#5BA8E8',core:'#C2E1F8',label:'Lezen',icon:'book'} };
+const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
+const BH_GOAL=100;
+
+// ---- save / load (localStorage) ----
+const SAVE_KEY='cosmo.save.v1';
+let saveTimer=null;
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState,250); }
+function saveState(){
+  try{
+    const data={ v:1, name:playerName, points, starsHere, active, level, ufoColor:ufo.color, feat:{...feat},
+      dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); }catch(e){ return null; } }
+function applySave(data){
+  if(!data) return false;
+  playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
+  level=data.level||1; active=Math.min(data.active||0, dims.length-1);
+  if(data.ufoColor) ufo.color=data.ufoColor;
+  if(data.feat) Object.assign(feat, data.feat);
+  if(feat.turbo) curMaxV=560; if(feat.gold && !data.ufoColor) ufo.color='#F2C84B';
+  if(Array.isArray(data.dims)){
+    data.dims.forEach((sd,i)=>{ const d=dims[i]; if(!d) return;
+      if(Array.isArray(sd.beams) && sd.beams.length){
+        d.beams=sd.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:!!b.played})); }
+      d.blackhole.unlocked=!!sd.bh; });
+  }
+  cur=dims[active];
+  return true;
+}
+
+const DIM_SPECS=[
+  { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
+    beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'rekenen'},
+      {x:2950,y:1380,subject:'lezen'},{x:900,y:2150,subject:'logica'},{x:3200,y:2300,subject:'rekenen'} ],
+    blackhole:{x:1900,y:1300,target:1} },
+  { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:22,
+    beams:[ {x:520,y:1900,subject:'rekenen'},{x:1700,y:400,subject:'logica'},{x:2700,y:1500,subject:'rekenen'},
+      {x:1500,y:2050,subject:'lezen'},{x:2600,y:520,subject:'logica'} ],
+    blackhole:{x:1600,y:1200,target:0} }
+];
+function buildDimension(spec){
+  const d={ name:spec.name, bg:spec.bg, star:spec.star, w:spec.w, h:spec.h, rockTint:spec.rockTint, rockCrater:spec.rockCrater,
+    beams:spec.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false})),
+    blackhole:{x:spec.blackhole.x,y:spec.blackhole.y,target:spec.blackhole.target,r:44,cool:0,unlocked:false},
+    rocks:[], layers:[] };
+  for(let i=0;i<spec.rockCount;i++) d.rocks.push(makeRock(d));
+  const defs=[{f:0.30,s:0.9,a:0.55},{f:0.55,s:1.3,a:0.8},{f:0.85,s:1.8,a:1}];
+  for(const df of defs){ const st=[]; const n=Math.round(d.w*d.h/(df.f<0.4?110000:df.f<0.7?150000:240000));
+    for(let i=0;i<n;i++)st.push({x:rnd(0,d.w),y:rnd(0,d.h),sz:df.s*rnd(0.7,1.3)}); d.layers.push({f:df.f,a:df.a,s:df.s,st}); }
+  return d;
+}
+function makeRock(d){
+  const r=rnd(26,52); let x,y,ok,tries=0;
+  do{ x=rnd(120,d.w-120); y=rnd(120,d.h-120); ok=true; tries++;
+    for(const b of d.beams) if(Math.hypot(x-b.x,y-b.y)<b.r+r+120) ok=false;
+    if(Math.hypot(x-d.blackhole.x,y-d.blackhole.y)<r+150) ok=false;
+    if(Math.hypot(x-340,y-340)<280) ok=false;
+  } while(!ok&&tries<60);
+  const pts=[]; const n=Math.floor(rnd(7,10)); for(let k=0;k<n;k++)pts.push(rnd(0.74,1));
+  const drift=Math.random()<0.55;
+  return {x,y,r,vx:drift?rnd(-30,30):0,vy:drift?rnd(-30,30):0,rot:rnd(0,6.28),vr:rnd(-0.5,0.5),pts,tint:d.rockTint,crater:d.rockCrater};
+}
+const dims=DIM_SPECS.map(buildDimension);
+let active=0, cur=dims[active];
+
+// extra beams so 100 is always reachable
+function brightBeams(d){ return d.beams.filter(b=>!b.played && b.subject!=='lezen').length; }
+function spawnBeams(d,n){
+  const subs=['rekenen','logica'];
+  for(let i=0;i<n;i++){ let x,y,ok,tries=0;
+    do{ x=rnd(160,d.w-160); y=rnd(160,d.h-160); ok=true; tries++;
+      for(const b of d.beams) if(Math.hypot(x-b.x,y-b.y)<160) ok=false;
+      if(Math.hypot(x-d.blackhole.x,y-d.blackhole.y)<180) ok=false;
+      if(Math.hypot(x-ufo.x,y-ufo.y)<260) ok=false;
+    } while(!ok&&tries<50);
+    d.beams.push({x,y,subject:subs[(d.beams.length)%2],r:54,cool:0,phase:Math.random()*6,played:false});
+  }
+}
+function ensureSupply(d){ if(starsHere<BH_GOAL && brightBeams(d)<3) spawnBeams(d,3); }
+
+const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,invuln:0,shake:0 };
+const ACCEL=900, FRICTION=1.6;
+let curMaxV=420;
+let playerName='Speler';
+let level=1; // leerjaar-niveau 1..6 (moeilijkheidsgraad)
+
+// upgrades (totaal sterren)
+const UPGRADES=[
+  {at:20, key:'color', name:'Nieuwe kleur kiezen', desc:'Kies zelf de kleur van je UFO'},
+  {at:50, key:'trail', name:'Sterren-spoor', desc:'Een spoor van sterren achter je UFO'},
+  {at:75, key:'wings', name:'Ruimtevleugels', desc:'Stoere vleugels aan je UFO'},
+  {at:150,key:'turbo', name:'Turbo-boost', desc:'Vlieg sneller door de ruimte'},
+  {at:200,key:'gold', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
+];
+const feat={color:false,trail:false,wings:false,turbo:false,gold:false};
+function checkUpgrades(){
+  for(const u of UPGRADES){ if(!feat[u.key] && points>=u.at){ feat[u.key]=true; applyUpgrade(u); } }
+}
+function applyUpgrade(u){
+  if(u.key==='turbo') curMaxV=560;
+  if(u.key==='gold') ufo.color='#F2C84B';
+  toast('Upgrade ontgrendeld: '+u.name+'!'); scheduleSave();
+}
+
+const keys={};
+let stick={active:false,bx:0,by:0,cx:0,cy:0,id:null};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function ptr(e){ const t=e.touches?e.touches[0]:e; return {x:t.clientX,y:t.clientY,id:e.touches?t.identifier:'m'}; }
+cv.addEventListener('touchstart',e=>{e.preventDefault(); const p=ptr(e); stick={active:true,bx:p.x,by:p.y,cx:p.x,cy:p.y,id:p.id};},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault(); if(!stick.active)return; for(const t of e.touches){ if(t.identifier===stick.id){ stick.cx=t.clientX; stick.cy=t.clientY; } }},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault(); stick.active=false;},{passive:false});
+cv.addEventListener('touchcancel',e=>{stick.active=false;});
+cv.addEventListener('mousedown',e=>{stick={active:true,bx:e.clientX,by:e.clientY,cx:e.clientX,cy:e.clientY,id:'m'};});
+addEventListener('mousemove',e=>{ if(stick.active&&stick.id==='m'){ stick.cx=e.clientX; stick.cy=e.clientY; }});
+addEventListener('mouseup',e=>{ if(stick.id==='m') stick.active=false; });
+function thrustVec(){
+  let tx=0,ty=0;
+  if(keys['arrowleft']||keys['a'])tx-=1; if(keys['arrowright']||keys['d'])tx+=1;
+  if(keys['arrowup']||keys['w'])ty-=1; if(keys['arrowdown']||keys['s'])ty+=1;
+  if(tx||ty){ const l=Math.hypot(tx,ty); return {x:tx/l,y:ty/l,m:1}; }
+  if(stick.active){ let dx=stick.cx-stick.bx, dy=stick.cy-stick.by; const d=Math.hypot(dx,dy);
+    if(d>6){ const m=Math.min(d/55,1); return {x:dx/d,y:dy/d,m}; } }
+  return {x:0,y:0,m:0};
+}
+
+let points=0, starsHere=0, paused=false, hintTimer=6;
+let trail=[], trailAcc=0;
+const cam={x:0,y:0};
+let last=performance.now();
+
+function update(dt){
+  if(paused) return;
+  const t=thrustVec();
+  ufo.vx+=t.x*ACCEL*t.m*dt; ufo.vy+=t.y*ACCEL*t.m*dt;
+  const fr=Math.exp(-FRICTION*dt); ufo.vx*=fr; ufo.vy*=fr;
+  const sp=Math.hypot(ufo.vx,ufo.vy);
+  if(sp>curMaxV){ ufo.vx=ufo.vx/sp*curMaxV; ufo.vy=ufo.vy/sp*curMaxV; }
+  ufo.x+=ufo.vx*dt; ufo.y+=ufo.vy*dt;
+  const m=46;
+  if(ufo.x<m){ufo.x=m; ufo.vx=Math.abs(ufo.vx)*0.4;} if(ufo.x>cur.w-m){ufo.x=cur.w-m; ufo.vx=-Math.abs(ufo.vx)*0.4;}
+  if(ufo.y<m){ufo.y=m; ufo.vy=Math.abs(ufo.vy)*0.4;} if(ufo.y>cur.h-m){ufo.y=cur.h-m; ufo.vy=-Math.abs(ufo.vy)*0.4;}
+  if(ufo.invuln>0)ufo.invuln-=dt; if(ufo.shake>0)ufo.shake-=dt;
+
+  if(feat.trail && sp>50){ trailAcc+=dt; if(trailAcc>0.05){ trailAcc=0; trail.push({x:ufo.x,y:ufo.y,life:0.55}); if(trail.length>44)trail.shift(); } }
+  for(const tr of trail) tr.life-=dt; trail=trail.filter(tr=>tr.life>0);
+
+  for(const r of cur.rocks){
+    r.x+=r.vx*dt; r.y+=r.vy*dt; r.rot+=r.vr*dt;
+    if(r.x<r.r||r.x>cur.w-r.r)r.vx*=-1; if(r.y<r.r||r.y>cur.h-r.r)r.vy*=-1;
+    const dx=ufo.x-r.x, dy=ufo.y-r.y, d=Math.hypot(dx,dy), min=r.r+40;
+    if(d<min && ufo.invuln<=0){ const nx=dx/(d||1), ny=dy/(d||1); ufo.x=r.x+nx*min; ufo.y=r.y+ny*min;
+      const dot=ufo.vx*nx+ufo.vy*ny; ufo.vx=(ufo.vx-2*dot*nx)*0.6; ufo.vy=(ufo.vy-2*dot*ny)*0.6; ufo.invuln=0.45; ufo.shake=0.35; }
+  }
+  for(const b of cur.beams){ if(b.cool>0)b.cool-=dt; b.phase+=dt; }
+  const bh=cur.blackhole; if(bh.cool>0)bh.cool-=dt;
+  for(const b of cur.beams){ if(b.cool<=0 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
+  if(bh.unlocked && bh.cool<=0 && Math.hypot(ufo.x-bh.x,ufo.y-bh.y)<bh.r){ travel(bh.target); }
+
+  const tx=ufo.x-W/2, ty=ufo.y-H/2;
+  cam.x+=(tx-cam.x)*Math.min(1,dt*6); cam.y+=(ty-cam.y)*Math.min(1,dt*6);
+  cam.x=Math.max(0,Math.min(cur.w-W,cam.x)); if(W>cur.w)cam.x=(cur.w-W)/2;
+  cam.y=Math.max(0,Math.min(cur.h-H,cam.y)); if(H>cur.h)cam.y=(cur.h-H)/2;
+  if(hintTimer>0){ hintTimer-=dt; if(hintTimer<=0) document.getElementById('hint').style.opacity=0; }
+}
+
+function travel(target){
+  active=target; cur=dims[active];
+  cur.blackhole.unlocked=false; cur.blackhole.cool=3; starsHere=0;
+  const bh=cur.blackhole; const ang=Math.random()*6.2832;
+  ufo.x=Math.max(120,Math.min(cur.w-120,bh.x+Math.cos(ang)*220));
+  ufo.y=Math.max(120,Math.min(cur.h-120,bh.y+Math.sin(ang)*220));
+  ufo.vx=0; ufo.vy=0; ufo.invuln=1; trail=[];
+  cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
+  showDimName(); toast('Welkom in het '+cur.name+'!'); updateGoalHud(); scheduleSave();
+}
+
+function drawUFO(g,scale){
+  g.save(); g.scale(scale,scale); g.lineJoin='round'; g.lineCap='round';
+  g.fillStyle=C_LEG; g.strokeStyle=C_NAVY; g.lineWidth=3;
+  for(const lx of [-42,-5,31]){ roundRect(g,lx,16,11,22,5); g.fill(); g.stroke(); }
+  g.fillStyle='#A99BE8'; g.lineWidth=2.5;
+  for(const f of [[-36,40],[0,44],[36,40]]){ g.beginPath(); g.arc(f[0],f[1],7.5,0,6.2832); g.fill(); g.stroke(); }
+  if(feat.wings){ g.fillStyle=ufo.color; g.lineWidth=3;
+    g.beginPath(); g.moveTo(-58,6); g.quadraticCurveTo(-108,-4,-98,20); g.quadraticCurveTo(-94,32,-56,22); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(58,6); g.quadraticCurveTo(108,-4,98,20); g.quadraticCurveTo(94,32,56,22); g.closePath(); g.fill(); g.stroke(); }
+  g.fillStyle=C_PINK; g.lineWidth=3; ellipse(g,0,20,64,18); g.fill(); g.stroke();
+  g.fillStyle=C_DOME; g.lineWidth=3.5; ellipse(g,0,-14,40,34); g.fill(); g.stroke();
+  g.fillStyle=ufo.color; ellipse(g,0,6,72,27); g.fill(); g.stroke();
+  g.strokeStyle='rgba(30,27,94,.5)'; g.lineWidth=2; g.beginPath(); g.moveTo(-66,2); g.quadraticCurveTo(0,22,66,2); g.stroke();
+  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.5;
+  for(const p of [[-52,6],[52,2],[0,16]]){ g.beginPath(); g.arc(p[0],p[1],6,0,6.2832); g.fill(); g.stroke(); }
+  g.fillStyle='rgba(226,246,250,.9)'; ellipse(g,-13,-26,14,8); g.fill();
+  g.restore();
+}
+function drawBeamIcon(g,b,s){
+  g.save(); g.translate(b.x,b.y); g.strokeStyle=C_NAVY; g.fillStyle=C_NAVY;
+  if(s.icon==='plus'){ g.lineWidth=4; g.lineCap='round'; g.beginPath(); g.moveTo(0,-9); g.lineTo(0,9); g.moveTo(-9,0); g.lineTo(9,0); g.stroke(); }
+  else if(s.icon==='dots'){ for(const p of [[-6,-6],[6,-6],[-6,6],[6,6]]){ g.beginPath(); g.arc(p[0],p[1],3,0,6.2832); g.fill(); } }
+  else if(s.icon==='book'){ g.beginPath(); g.moveTo(0,-6); g.bezierCurveTo(-4,-10,-10,-10,-13,-7); g.lineTo(-13,7);
+    g.bezierCurveTo(-10,4,-4,4,0,8); g.bezierCurveTo(4,4,10,4,13,7); g.lineTo(13,-7); g.bezierCurveTo(10,-10,4,-10,0,-6); g.closePath(); g.fill(); }
+  g.restore();
+}
+function drawBlackhole(bh){
+  const t=performance.now()/1000; ctx.save(); ctx.translate(bh.x,bh.y);
+  for(let i=5;i>=1;i--){ ctx.fillStyle='rgba(150,110,230,'+(0.04*i)+')'; ctx.beginPath(); ctx.arc(0,0,28+i*12,0,6.2832); ctx.fill(); }
+  ctx.save(); ctx.rotate(t*0.8); ctx.globalAlpha=0.85; const cols=['#5BA8E8','#C58BE8','#33C9C6'];
+  for(let k=0;k<3;k++){ ctx.strokeStyle=cols[k]; ctx.lineWidth=5-k; ctx.beginPath(); ctx.ellipse(0,0,54-k*6,32-k*5,k*0.5,0.2,5.7); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle='#120C2C'; ctx.beginPath(); ctx.arc(0,0,30,0,6.2832); ctx.fill(); ctx.strokeStyle='#2A1E5E'; ctx.lineWidth=2; ctx.stroke();
+  ctx.save(); ctx.rotate(t*1.6); ctx.strokeStyle='rgba(180,150,255,.55)'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(0,0,17,0.5,3.7); ctx.stroke(); ctx.restore();
+  ctx.restore();
+  ctx.fillStyle='#fff'; ctx.font='600 14px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('Zwart gat', bh.x, bh.y+60);
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=cur.bg; ctx.fillRect(0,0,W,H);
+  const sh=ufo.shake>0?(Math.random()-0.5)*8*(ufo.shake/0.35):0, sh2=ufo.shake>0?(Math.random()-0.5)*8*(ufo.shake/0.35):0;
+  for(const L of cur.layers){ ctx.fillStyle='rgba('+cur.star+','+L.a+')';
+    for(const s of L.st){ const px=s.x-cam.x*L.f, py=s.y-cam.y*L.f; if(px<-5||px>W+5||py<-5||py>H+5)continue; ctx.beginPath(); ctx.arc(px,py,s.sz,0,6.2832); ctx.fill(); } }
+
+  ctx.save(); ctx.translate(-cam.x+sh,-cam.y+sh2);
+  ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=6; ctx.strokeRect(3,3,cur.w-6,cur.h-6);
+  if(cur.blackhole.unlocked) drawBlackhole(cur.blackhole);
+
+  // trail
+  for(const tr of trail){ const a=tr.life/0.55; ctx.fillStyle='rgba(255,210,74,'+(a*0.8)+')'; star4(ctx,tr.x,tr.y,2+a*3); }
+
+  for(const b of cur.beams){
+    const s=SUBJECTS[b.subject]; const op=b.played?0.32:1; const pulse=0.5+0.5*Math.sin(b.phase*2);
+    ctx.globalAlpha=op;
+    ctx.fillStyle=hexA(s.color,0.14+pulse*0.05);
+    ctx.beginPath(); ctx.moveTo(b.x-14,b.y-6); ctx.lineTo(b.x+14,b.y-6); ctx.lineTo(b.x+70,b.y+150); ctx.lineTo(b.x-70,b.y+150); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=hexA(s.color,0.30); ctx.beginPath(); ctx.arc(b.x,b.y,b.r*(1+pulse*0.12),0,6.2832); ctx.fill();
+    ctx.fillStyle=s.core; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(b.x,b.y,b.r*0.42,0,6.2832); ctx.fill(); ctx.stroke();
+    drawBeamIcon(ctx,b,s);
+    ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText(b.played?s.label+' ✓':s.label, b.x, b.y+b.r+6);
+    ctx.globalAlpha=1;
+  }
+  for(const r of cur.rocks){
+    ctx.save(); ctx.translate(r.x,r.y); ctx.rotate(r.rot);
+    ctx.fillStyle=r.tint; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.lineJoin='round';
+    ctx.beginPath(); const n=r.pts.length;
+    for(let k=0;k<n;k++){ const a=k/n*6.2832, rr=r.r*r.pts[k], x=Math.cos(a)*rr, y=Math.sin(a)*rr; k?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=r.crater; ctx.beginPath(); ctx.arc(r.r*0.2,-r.r*0.15,r.r*0.18,0,6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(-r.r*0.3,r.r*0.25,r.r*0.12,0,6.2832); ctx.fill(); ctx.restore();
+  }
+
+  ctx.save(); ctx.translate(ufo.x,ufo.y);
+  const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/curMaxV*0.4)); const sp=Math.hypot(ufo.vx,ufo.vy);
+  if(feat.gold){ for(let i=3;i>=1;i--){ ctx.fillStyle='rgba(255,210,74,'+(0.06*i)+')'; ctx.beginPath(); ctx.arc(0,4,40+i*9,0,6.2832); ctx.fill(); } }
+  if(sp>40){ const ang=Math.atan2(ufo.vy,ufo.vx); ctx.save(); ctx.rotate(ang);
+    ctx.fillStyle=feat.turbo?'rgba(255,150,40,.65)':'rgba(245,139,176,.5)';
+    ctx.beginPath(); ctx.ellipse(-46,18,(feat.turbo?22:16)+sp*0.04,9,0,0,6.2832); ctx.fill(); ctx.restore(); }
+  ctx.rotate(bank);
+  if(!(ufo.invuln>0 && Math.floor(ufo.invuln*16)%2)) drawUFO(ctx,0.62);
+  ctx.restore();
+
+  ctx.restore();
+  drawMinimap(); drawOffscreenHint();
+}
+function drawMinimap(){
+  const mw=110, mh=Math.round(mw*cur.h/cur.w), px=W-mw-14, py=H-mh-14;
+  ctx.fillStyle='rgba(30,27,94,.55)'; roundRect(ctx,px,py,mw,mh,8); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1; ctx.stroke();
+  const sx=mw/cur.w, sy=mh/cur.h;
+  for(const r of cur.rocks){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(px+r.x*sx,py+r.y*sy,1.4,0,6.2832); ctx.fill(); }
+  for(const b of cur.beams){ ctx.globalAlpha=b.played?0.4:1; ctx.fillStyle=SUBJECTS[b.subject].color; ctx.beginPath(); ctx.arc(px+b.x*sx,py+b.y*sy,3.2,0,6.2832); ctx.fill(); ctx.globalAlpha=1; }
+  if(cur.blackhole.unlocked){ const bh=cur.blackhole; ctx.fillStyle='#120C2C'; ctx.beginPath(); ctx.arc(px+bh.x*sx,py+bh.y*sy,3.6,0,6.2832); ctx.fill(); ctx.strokeStyle='#C58BE8'; ctx.lineWidth=1.4; ctx.stroke(); }
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px+ufo.x*sx,py+ufo.y*sy,2.6,0,6.2832); ctx.fill();
+}
+function drawOffscreenHint(){
+  const pois=cur.beams.filter(b=>!b.played).map(b=>({x:b.x,y:b.y,c:SUBJECTS[b.subject].color}));
+  if(cur.blackhole.unlocked) pois.push({x:cur.blackhole.x,y:cur.blackhole.y,c:'#C58BE8'});
+  let best=null,bd=1e9; for(const p of pois){ const d=Math.hypot(ufo.x-p.x,ufo.y-p.y); if(d<bd){bd=d;best=p;} }
+  if(!best) return; const sx=best.x-cam.x, sy=best.y-cam.y;
+  if(sx>40&&sx<W-40&&sy>40&&sy<H-40) return;
+  const ang=Math.atan2(sy-H/2,sx-W/2), ex=W/2+Math.cos(ang)*(Math.min(W,H)/2-46), ey=H/2+Math.sin(ang)*(Math.min(W,H)/2-46);
+  ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang); ctx.fillStyle=best.c; ctx.strokeStyle=C_NAVY; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-8,-8); ctx.lineTo(-8,8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+// ---- mini-game ----
+const mg=document.getElementById('mg'), mgcard=document.getElementById('mgcard');
+let mgState=null;
+function openMiniGame(b){
+  b.cool=2.8; paused=true; ufo.vx*=0.2; ufo.vy*=0.2;
+  if(b.subject==='lezen'){ showComingSoon(); return; }
+  mgState={ beam:b, subject:b.subject, total:10, i:0, earned:0 };
+  nextQuestion(); mg.classList.add('show');
+}
+// moeilijkheidsgraad schaalt met gekozen leerjaar (level 1..6)
+function genMath(){
+  const maxSum = [10,20,50,100,1000,1000][level-1] || 20;
+  const useMul = level>=2 && Math.random()<(level>=3?0.45:0.25);
+  if(useMul){
+    const tables = level>=3 ? 10 : 5;
+    const a=Math.floor(rnd(1, tables+1)), b=Math.floor(rnd(1,11));
+    return {q:a+' × '+b+' = ?', ans:a*b, seq:false};
+  }
+  const sub=Math.random()<0.45;
+  if(sub){ const a=Math.floor(rnd(3,maxSum+1)); const b=Math.floor(rnd(1,a)); return {q:a+' − '+b+' = ?', ans:a-b, seq:false}; }
+  const a=Math.floor(rnd(1,maxSum)); const b=Math.floor(rnd(1,Math.max(2,maxSum-a)+1)); return {q:a+' + '+b+' = ?', ans:a+b, seq:false};
+}
+function genSeq(){
+  const steps = level<=2 ? [1,2,5,10] : level<=4 ? [2,3,5,10,25] : [3,5,7,25,50];
+  const step=steps[Math.floor(rnd(0,steps.length))], start=Math.floor(rnd(1,9))*(level>=4?step:1);
+  const arr=[start,start+step,start+2*step,start+3*step], ans=start+4*step;
+  return {q:arr.join('  ·  ')+'  ·  ?', ans, seq:true};
+}
+function distractors(ans){ const set=new Set([ans]), out=[]; const sp=Math.max(4,Math.round(ans*0.12));
+  while(out.length<2){ let d=ans+Math.floor(rnd(-sp,sp+1)); if(d<0)d=ans+Math.floor(rnd(1,sp+1)); if(!set.has(d)){ set.add(d); out.push(d); } } return out; }
+function nextQuestion(){ const st=mgState; if(st.i>=st.total){ showResult(); return; }
+  const data=st.subject==='rekenen'?genMath():genSeq();
+  const opts=[data.ans,...distractors(data.ans)].sort(()=>Math.random()-0.5); const s=SUBJECTS[st.subject];
+  mgcard.innerHTML='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>'+
+    '<div class="qbox'+(data.seq?' seq':'')+'">'+data.q+'</div>'+
+    '<div class="answers">'+opts.map(o=>'<button class="ans" data-v="'+o+'">'+o+'</button>').join('')+'</div>';
+  mgcard.querySelectorAll('.ans').forEach(btn=>{ btn.onclick=()=>answer(btn,parseInt(btn.dataset.v),data.ans); });
+}
+function answer(btn,val,correct){
+  const btns=mgcard.querySelectorAll('.ans'); btns.forEach(b=>b.disabled=true);
+  if(val===correct){ btn.classList.add('good'); mgState.earned+=1; addStars(1); }
+  else { btn.classList.add('bad'); btns.forEach(b=>{ if(parseInt(b.dataset.v)===correct)b.classList.add('good'); }); }
+  mgState.i++; setTimeout(nextQuestion, val===correct?500:950);
+}
+function showResult(){
+  const e=mgState.earned;
+  if(mgState.beam){ mgState.beam.played=true; ensureSupply(cur); }
+  scheduleSave();
+  const msg=e>=8?'Geweldig gedaan!':e>=5?'Goed bezig!':'Blijf oefenen!';
+  const disp=e<=0?'☆':(e<=10?'★'.repeat(e):'★ × '+e);
+  mgcard.innerHTML='<div class="stars-earned">'+disp+'</div><div class="mg-msg">'+msg+'</div>'+
+    '<div class="mg-sub">Je verdiende <b>'+e+' sterren</b> ('+e+' van 10 goed).</div>'+
+    '<button class="btn" id="mgdone">Verder vliegen</button>';
+  document.getElementById('mgdone').onclick=closeMiniGame;
+}
+function showComingSoon(){
+  mgcard.innerHTML='<div class="mg-top"><span class="pill">Lezen</span></div>'+
+    '<div class="qbox seq" style="font-size:22px">Lezen komt binnenkort!</div>'+
+    '<div class="mg-sub">Dit spel bouwen we hierna. Vlieg verder en oefen bij de andere beams.</div>'+
+    '<button class="btn" id="mgdone">Verder vliegen</button>';
+  mg.classList.add('show'); document.getElementById('mgdone').onclick=closeMiniGame;
+}
+function closeMiniGame(){ mg.classList.remove('show'); paused=false; last=performance.now(); }
+
+// ---- stars / progression ----
+function addStars(n){
+  points+=n; starsHere+=n; document.getElementById('ptsval').textContent=points;
+  checkUpgrades();
+  if(starsHere>=BH_GOAL && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Een zwart gat is verschenen! Vlieg erin naar een nieuw stelsel.'); }
+  updateGoalHud(); scheduleSave();
+}
+function updateGoalHud(){
+  const tEl=document.getElementById('goaltext'), fEl=document.getElementById('goalfill'); if(!tEl)return;
+  if(cur.blackhole.unlocked){ tEl.textContent='Het zwarte gat is open — vlieg erin naar een nieuw stelsel!'; fEl.style.width='100%'; return; }
+  const need=Math.max(0,BH_GOAL-starsHere);
+  tEl.textContent='Nog '+need+' ★ → zwart gat naar een nieuw stelsel';
+  fEl.style.width=(starsHere/BH_GOAL*100)+'%';
+}
+
+// ---- upgrade panel ----
+const upEl=document.getElementById('up'), upcard=document.getElementById('upcard');
+document.getElementById('ubtn').onclick=openUpgrades;
+function openUpgrades(){ paused=true; buildUpgradePanel(); upEl.classList.add('show'); }
+function closeUpgrades(){ upEl.classList.remove('show'); paused=false; last=performance.now(); }
+function buildUpgradePanel(){
+  let rows='';
+  for(const u of UPGRADES){
+    const done=feat[u.key];
+    const status=done?'<span class="badge done">✓</span>':'<span class="badge lock">'+Math.max(0,u.at-points)+' ★</span>';
+    let extra='';
+    if(u.key==='color' && done){ const cols=PALETTE.concat(feat.gold?['#F2C84B']:[]);
+      extra='<div class="swatches">'+cols.map(c=>'<button class="sw" style="background:'+c+'" data-c="'+c+'"></button>').join('')+'</div>'; }
+    rows+='<div class="tier'+(done?'':' locked')+'"><div class="tinfo"><div class="tname">'+u.at+' ★ — '+u.name+'</div><div class="tdesc">'+u.desc+'</div>'+extra+'</div>'+status+'</div>';
+  }
+  // leerjaar-keuze (moeilijkheidsgraad)
+  let lvls=''; for(let i=1;i<=6;i++) lvls+='<button class="lvlbtn'+(i===level?' sel':'')+'" data-l="'+i+'">LJ'+i+'</button>';
+  upcard.innerHTML='<div class="mg-top"><span class="pill">UFO-upgrades</span><span class="pill">Totaal: '+points+' ★</span></div>'+
+    rows+
+    '<div class="tname" style="text-align:center;margin:14px 0 2px">Moeilijkheidsgraad</div>'+
+    '<div class="tdesc" style="text-align:center;margin-bottom:6px">Kies het leerjaar voor de rekenvragen</div>'+
+    '<div class="lvlrow">'+lvls+'</div>'+
+    '<button class="btn ghost" id="upreset" style="margin:10px 0 4px">Voortgang wissen</button><br>'+
+    '<button class="btn" id="upclose" style="margin-top:6px">Sluiten</button>';
+  upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ ufo.color=b.dataset.c; scheduleSave(); });
+  upcard.querySelectorAll('.lvlbtn').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l); scheduleSave(); buildUpgradePanel(); });
+  document.getElementById('upreset').onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ localStorage.removeItem(SAVE_KEY); location.reload(); } };
+  document.getElementById('upclose').onclick=closeUpgrades;
+}
+
+let toastT=null;
+function toast(txt){ const el=document.getElementById('toast'); el.textContent=txt; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2200); }
+let dimT=null;
+function showDimName(){ const el=document.getElementById('dimname'); el.textContent=cur.name; el.style.opacity=1; clearTimeout(dimT); dimT=setTimeout(()=>el.style.opacity=0,2600); }
+
+// ---- start / profiel ----
+const startEl=document.getElementById('start'), startcard=document.getElementById('startcard');
+function showStart(returning){
+  paused=true;
+  let lvls=''; for(let i=1;i<=6;i++) lvls+='<button class="lvlbtn'+(i===level?' sel':'')+'" data-l="'+i+'">LJ'+i+'</button>';
+  startcard.innerHTML='<div class="stars-earned">🛸</div><div class="mg-msg">Cosmo — Ruimteleren</div>'+
+    (returning
+      ? '<div class="mg-sub">Welkom terug, <b>'+playerName+'</b>! Je hebt <b>'+points+' ★</b> verzameld.</div>'
+      : '<div class="mg-sub">Sleep om de UFO te vliegen, zoek de gekleurde beams en los de vragen op. Elk juist antwoord = 1 ster!</div>')+
+    '<div class="tname" style="text-align:center;margin:4px 0 2px">Welk leerjaar?</div>'+
+    '<div class="lvlrow">'+lvls+'</div>'+
+    '<button class="btn" id="startbtn" style="margin-top:14px">'+(returning?'Verder spelen':'Start het avontuur')+'</button>';
+  startcard.querySelectorAll('.lvlbtn').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
+    startcard.querySelectorAll('.lvlbtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
+  startEl.classList.add('show');
+  document.getElementById('startbtn').onclick=()=>{ startEl.classList.remove('show'); paused=false; last=performance.now(); scheduleSave(); };
+}
+
+// ---- boot ----
+const saved=loadRaw();
+const returning=applySave(saved);
+document.getElementById('namelabel').textContent=playerName;
+document.getElementById('ptsval').textContent=points;
+if(returning){ // herstel positie nabij blackhole/centrum van huidig stelsel
+  ufo.x=Math.min(cur.w-120,640); ufo.y=Math.min(cur.h-120,640);
+  cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
+}
+updateGoalHud();
+showStart(returning);
+
+// service worker (PWA / offline)
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+// laatste kans om op te slaan
+window.addEventListener('pagehide',saveState); window.addEventListener('visibilitychange',()=>{ if(document.hidden) saveState(); });
+
+function loop(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05; update(dt); render(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

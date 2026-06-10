@@ -1,0 +1,17 @@
+{
+  "name": "Cosmo — Ruimteleren",
+  "short_name": "Cosmo",
+  "description": "Een educatief UFO-ruimtespel om te leren rekenen, lezen en logisch nadenken.",
+  "lang": "nl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#6C6CE8",
+  "theme_color": "#6C6CE8",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
