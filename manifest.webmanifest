@@ -3,7 +3,7 @@
   "short_name": "Cosmo",
   "description": "Een educatief UFO-ruimtespel om te leren rekenen, lezen en logisch nadenken.",
   "lang": "nl",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",
