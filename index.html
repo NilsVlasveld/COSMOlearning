@@ -80,6 +80,23 @@
     border-radius:12px; font-size:14px; font-weight:700; padding:8px 12px; cursor:pointer; min-width:54px; }
   .lvlbtn.sel { background:#FFD24A; color:#1E1B5E; border-color:#1E1B5E; }
 
+  /* speels aanmeldscherm */
+  .ob-hi { font-size:30px; margin:2px 0 4px; }
+  .ob-sentence { font-size:17px; font-weight:600; opacity:.95; margin:2px 0 6px; }
+  .ob-input { width:100%; max-width:300px; font-size:22px; font-weight:700; text-align:center;
+    color:#1E1B5E; background:#fff; border:3.5px solid #1E1B5E; border-radius:16px; padding:13px 14px; outline:none;
+    user-select:text; -webkit-user-select:text; }
+  .ob-input::placeholder { color:#9D99C2; font-weight:600; }
+  .ob-input:focus { box-shadow:0 0 0 4px rgba(255,210,74,.6); }
+  .grade-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:8px 0 2px; }
+  .grade { border:3px solid #1E1B5E; border-radius:18px; padding:11px 6px 9px; cursor:pointer; color:#1E1B5E;
+    font-weight:700; transition:transform .12s, box-shadow .12s; position:relative; min-height:64px; }
+  .grade:active { transform:scale(.94); }
+  .grade .num { font-size:25px; line-height:1; }
+  .grade .lbl { font-size:11px; font-weight:700; opacity:.78; margin-top:2px; }
+  .grade.sel { box-shadow:0 0 0 4px #FFD24A; transform:translateY(-2px); }
+  .grade.sel::after { content:'✓'; position:absolute; top:5px; right:8px; font-size:13px; color:#1E1B5E; }
+
   #toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.8);
     background:#FFD24A; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:18px; font-size:18px; font-weight:700;
     padding:12px 22px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:25; text-align:center; max-width:80%; }
@@ -125,9 +142,10 @@ const BH_GOAL=100;
 
 // ---- save / load (localStorage) ----
 const SAVE_KEY='cosmo.save.v1';
-let saveTimer=null;
+let saveTimer=null, wiping=false;
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState,250); }
 function saveState(){
+  if(wiping) return;
   try{
     const data={ v:1, name:playerName, points, starsHere, active, level, ufoColor:ufo.color, feat:{...feat},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
@@ -510,7 +528,7 @@ function buildUpgradePanel(){
     '<button class="btn" id="upclose" style="margin-top:6px">Sluiten</button>';
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ ufo.color=b.dataset.c; scheduleSave(); });
   upcard.querySelectorAll('.lvlbtn').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l); scheduleSave(); buildUpgradePanel(); });
-  document.getElementById('upreset').onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ localStorage.removeItem(SAVE_KEY); location.reload(); } };
+  document.getElementById('upreset').onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   document.getElementById('upclose').onclick=closeUpgrades;
 }
 
@@ -519,22 +537,36 @@ function toast(txt){ const el=document.getElementById('toast'); el.textContent=t
 let dimT=null;
 function showDimName(){ const el=document.getElementById('dimname'); el.textContent=cur.name; el.style.opacity=1; clearTimeout(dimT); dimT=setTimeout(()=>el.style.opacity=0,2600); }
 
-// ---- start / profiel ----
+// ---- start / aanmelden (speels) ----
 const startEl=document.getElementById('start'), startcard=document.getElementById('startcard');
+const GRADES=[ {n:'1ste',c:'#FFE7A0'},{n:'2de',c:'#C8E6A0'},{n:'3de',c:'#C2E1F8'},
+  {n:'4de',c:'#F4B9CE'},{n:'5de',c:'#D9C2F0'},{n:'6de',c:'#A6E4EE'} ];
+function hasName(){ return playerName && playerName!=='Speler'; }
 function showStart(returning){
   paused=true;
-  let lvls=''; for(let i=1;i<=6;i++) lvls+='<button class="lvlbtn'+(i===level?' sel':'')+'" data-l="'+i+'">LJ'+i+'</button>';
-  startcard.innerHTML='<div class="stars-earned">🛸</div><div class="mg-msg">Cosmo — Ruimteleren</div>'+
-    (returning
-      ? '<div class="mg-sub">Welkom terug, <b>'+playerName+'</b>! Je hebt <b>'+points+' ★</b> verzameld.</div>'
-      : '<div class="mg-sub">Sleep om de UFO te vliegen, zoek de gekleurde beams en los de vragen op. Elk juist antwoord = 1 ster!</div>')+
-    '<div class="tname" style="text-align:center;margin:4px 0 2px">Welk leerjaar?</div>'+
-    '<div class="lvlrow">'+lvls+'</div>'+
-    '<button class="btn" id="startbtn" style="margin-top:14px">'+(returning?'Verder spelen':'Start het avontuur')+'</button>';
-  startcard.querySelectorAll('.lvlbtn').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
-    startcard.querySelectorAll('.lvlbtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
+  const grid=GRADES.map((g,i)=>{ const lv=i+1;
+    return '<button class="grade'+(lv===level?' sel':'')+'" data-l="'+lv+'" style="background:'+g.c+'">'+
+      '<div class="num">'+g.n+'</div><div class="lbl">leerjaar</div></button>';
+  }).join('');
+  const head = returning
+    ? '<div class="mg-msg ob-hi">Welkom terug! 🛸</div>'+
+      '<div class="ob-sentence">Fijn dat je er weer bent'+(hasName()?', <b>'+playerName+'</b>':'')+'. Je hebt al <b>'+points+' ★</b>!</div>'
+    : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
+  const nameField = returning ? '' :
+    '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
+  startcard.innerHTML = head + nameField +
+    '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
+    '<div class="grade-grid">'+grid+'</div>'+
+    '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>';
+  startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
+    startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
-  document.getElementById('startbtn').onclick=()=>{ startEl.classList.remove('show'); paused=false; last=performance.now(); scheduleSave(); };
+  const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
+  document.getElementById('startbtn').onclick=()=>{
+    const f=document.getElementById('obname');
+    if(f){ const v=f.value.trim(); playerName = v || 'Ruimtevaarder'; document.getElementById('namelabel').textContent=playerName; }
+    startEl.classList.remove('show'); paused=false; last=performance.now(); scheduleSave();
+  };
 }
 
 // ---- boot ----
