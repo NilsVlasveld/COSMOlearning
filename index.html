@@ -76,6 +76,8 @@
   .sw { width:30px; height:30px; border-radius:50%; border:3px solid #1E1B5E; cursor:pointer; }
   .sw:active{ transform:scale(.9); }
   .lvlrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 4px; }
+  .semrow { display:flex; gap:10px; justify-content:center; margin:6px 0 2px; }
+  .semrow .lvlbtn { flex:1; max-width:170px; }
   .lvlbtn { background:rgba(255,255,255,.14); color:#fff; border:2.5px solid rgba(255,255,255,.4);
     border-radius:12px; font-size:14px; font-weight:700; padding:8px 12px; cursor:pointer; min-width:54px; }
   .lvlbtn.sel { background:#FFD24A; color:#1E1B5E; border-color:#1E1B5E; }
@@ -147,7 +149,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, ufoColor:ufo.color, feat:{...feat},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, ufoColor:ufo.color, feat:{...feat},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -156,7 +158,7 @@ function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function applySave(data){
   if(!data) return false;
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
-  level=data.level||1; active=Math.min(data.active||0, dims.length-1);
+  level=data.level||1; semester=data.semester||2; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.feat) Object.assign(feat, data.feat);
   if(feat.turbo) curMaxV=560; if(feat.gold && !data.ufoColor) ufo.color='#F2C84B';
@@ -224,7 +226,8 @@ const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,invuln:0,shake:0 };
 const ACCEL=900, FRICTION=1.6;
 let curMaxV=420;
 let playerName='Speler';
-let level=1; // leerjaar-niveau 1..6 (moeilijkheidsgraad)
+let level=1;    // leerjaar 1..6
+let semester=2; // 1 = begin schooljaar, 2 = einde schooljaar (moeilijker)
 
 // upgrades (totaal sterren)
 const UPGRADES=[
@@ -433,21 +436,71 @@ function openMiniGame(b){
   nextQuestion(); mg.classList.add('show');
 }
 // moeilijkheidsgraad schaalt met gekozen leerjaar (level 1..6)
-function genMath(){
-  const maxSum = [10,20,50,100,1000,1000][level-1] || 20;
-  const useMul = level>=2 && Math.random()<(level>=3?0.45:0.25);
-  if(useMul){
-    const tables = level>=3 ? 10 : 5;
-    const a=Math.floor(rnd(1, tables+1)), b=Math.floor(rnd(1,11));
-    return {q:a+' × '+b+' = ?', ans:a*b, seq:false};
+function ri(a,b){ return Math.floor(rnd(a,b+1)); }   // willekeurig geheel getal a..b (incl.)
+function pick(a){ return a[Math.floor(rnd(0,a.length))]; }
+
+// ===== LEERPLAN — rekenen per leerjaar & semester =====
+// Leerjaar 1
+function q_LJ1_S1(){ // S1: getalbegrip & rekenen tot 10
+  switch(ri(1,4)){
+    case 1: { const x=ri(1,9), y=ri(1,10-x); return {q:x+' + '+y+' = ?', ans:x+y}; }   // optellen tot 10
+    case 2: { const a=ri(3,10), b=ri(1,a-1); return {q:a+' − '+b+' = ?', ans:a-b}; }    // aftrekken tot 10
+    case 3: { const t=ri(6,10), a=ri(1,t-1); return {q:a+' + ? = '+t, ans:t-a}; }       // aanvullen
+    default:{ const a=ri(1,9); return {q:a+' + ? = 10', ans:10-a}; }                     // tienvriendjes
   }
-  const sub=Math.random()<0.45;
-  if(sub){ const a=Math.floor(rnd(3,maxSum+1)); const b=Math.floor(rnd(1,a)); return {q:a+' − '+b+' = ?', ans:a-b, seq:false}; }
-  const a=Math.floor(rnd(1,maxSum)); const b=Math.floor(rnd(1,Math.max(2,maxSum-a)+1)); return {q:a+' + '+b+' = ?', ans:a+b, seq:false};
 }
+function q_LJ1_S2(){ // S2: rekenen tot 20, met brug over het tiental
+  switch(ri(1,4)){
+    case 1: { const a=ri(11,17), b=ri(1,19-a); return {q:a+' + '+b+' = ?', ans:a+b}; }  // optellen tot 20
+    case 2: { let a,b; do{ a=ri(5,9); b=ri(2,9); }while(a+b<=10||a+b>18); return {q:a+' + '+b+' = ?', ans:a+b}; } // brug over 10
+    case 3: { const a=ri(12,20), b=ri(1,a-1); return {q:a+' − '+b+' = ?', ans:a-b}; }   // aftrekken tot 20
+    default:{ const t=ri(13,20), a=ri(2,t-2); return {q:a+' + ? = '+t, ans:t-a}; }       // aanvullen tot 20
+  }
+}
+// Leerjaar 2
+function q_LJ2_S1(){ // S1: rekenen tot 100, tafels van 2/5/10, dubbel/helft
+  switch(ri(1,5)){
+    case 1: { const a=ri(20,70), b=ri(5,Math.max(6,Math.min(99-a,29))); return {q:a+' + '+b+' = ?', ans:a+b}; }
+    case 2: { const a=ri(30,99), b=ri(5,a-5); return {q:a+' − '+b+' = ?', ans:a-b}; }
+    case 3: { const t=pick([2,5,10]), b=ri(1,10); return {q:t+' × '+b+' = ?', ans:t*b}; }
+    case 4: { const a=ri(2,20); return {q:'dubbel van '+a+' = ?', ans:a*2}; }
+    default:{ const h=ri(2,15); return {q:'helft van '+(h*2)+' = ?', ans:h}; }
+  }
+}
+function q_LJ2_S2(){ // S2: vlot tot 100 (brug), tafels 1..5 + 10, deeltafels
+  switch(ri(1,5)){
+    case 1: { let a,b; do{ a=ri(15,85); b=ri(6,40); }while((a%10)+(b%10)<10 || a+b>100); return {q:a+' + '+b+' = ?', ans:a+b}; }
+    case 2: { let a,b; do{ a=ri(25,99); b=ri(6,Math.min(a-1,45)); }while((a%10)>=(b%10)); return {q:a+' − '+b+' = ?', ans:a-b}; }
+    case 3: { const t=pick([2,3,4,5,10]), b=ri(2,10); return {q:t+' × '+b+' = ?', ans:t*b}; }
+    case 4: { const t=pick([2,3,4,5,10]), b=ri(2,10); return {q:(t*b)+' : '+t+' = ?', ans:b}; } // delen
+    default:{ const a=ri(2,25); return {q:'dubbel van '+a+' = ?', ans:a*2}; }
+  }
+}
+// Leerjaar 3..6 (algemeen, semester verhoogt het getalbereik)
+function q_generic(){
+  const base=[1000,1000,1000,10000,100000,1000000][level-1]||1000;
+  const maxSum = semester===2 ? base : Math.round(base/2);
+  const r=Math.random();
+  if(r<0.4){ const a=ri(2,12), b=ri(2,12); return Math.random()<0.5 ? {q:a+' × '+b+' = ?', ans:a*b} : {q:(a*b)+' : '+a+' = ?', ans:b}; }
+  if(r<0.7){ const a=ri(Math.round(maxSum*0.2)+2,maxSum), b=ri(2,a-1); return {q:a+' − '+b+' = ?', ans:a-b}; }
+  const a=ri(2,maxSum), b=ri(2,Math.max(3,maxSum-a)); return {q:a+' + '+b+' = ?', ans:a+b};
+}
+function genMath(){
+  let d;
+  if(level===1) d = semester===1 ? q_LJ1_S1() : q_LJ1_S2();
+  else if(level===2) d = semester===1 ? q_LJ2_S1() : q_LJ2_S2();
+  else d = q_generic();
+  d.seq=false; return d;
+}
+// ===== LEERPLAN — logica: reeksen/patronen per leerjaar & semester =====
 function genSeq(){
-  const steps = level<=2 ? [1,2,5,10] : level<=4 ? [2,3,5,10,25] : [3,5,7,25,50];
-  const step=steps[Math.floor(rnd(0,steps.length))], start=Math.floor(rnd(1,9))*(level>=4?step:1);
+  let steps;
+  if(level===1) steps = semester===1 ? [1,2] : [2,5,10];
+  else if(level===2) steps = semester===1 ? [2,5,10] : [4,5,25,50];
+  else if(level<=4) steps = [3,5,10,25];
+  else steps = [7,25,50,100];
+  const step=pick(steps);
+  let start = ri(1,9); if(level>=2 && semester===2) start *= 2;
   const arr=[start,start+step,start+2*step,start+3*step], ans=start+4*step;
   return {q:arr.join('  ·  ')+'  ·  ?', ans, seq:true};
 }
@@ -456,7 +509,7 @@ function distractors(ans){ const set=new Set([ans]), out=[]; const sp=Math.max(4
 function nextQuestion(){ const st=mgState; if(st.i>=st.total){ showResult(); return; }
   const data=st.subject==='rekenen'?genMath():genSeq();
   const opts=[data.ans,...distractors(data.ans)].sort(()=>Math.random()-0.5); const s=SUBJECTS[st.subject];
-  mgcard.innerHTML='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>'+
+  mgcard.innerHTML='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+' · S'+semester+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>'+
     '<div class="qbox'+(data.seq?' seq':'')+'">'+data.q+'</div>'+
     '<div class="answers">'+opts.map(o=>'<button class="ans" data-v="'+o+'">'+o+'</button>').join('')+'</div>';
   mgcard.querySelectorAll('.ans').forEach(btn=>{ btn.onclick=()=>answer(btn,parseInt(btn.dataset.v),data.ans); });
@@ -517,17 +570,21 @@ function buildUpgradePanel(){
       extra='<div class="swatches">'+cols.map(c=>'<button class="sw" style="background:'+c+'" data-c="'+c+'"></button>').join('')+'</div>'; }
     rows+='<div class="tier'+(done?'':' locked')+'"><div class="tinfo"><div class="tname">'+u.at+' ★ — '+u.name+'</div><div class="tdesc">'+u.desc+'</div>'+extra+'</div>'+status+'</div>';
   }
-  // leerjaar-keuze (moeilijkheidsgraad)
+  // leerjaar- + semester-keuze (moeilijkheidsgraad)
   let lvls=''; for(let i=1;i<=6;i++) lvls+='<button class="lvlbtn'+(i===level?' sel':'')+'" data-l="'+i+'">LJ'+i+'</button>';
+  const sems='<button class="lvlbtn sembtn'+(semester===1?' sel':'')+'" data-s="1">Begin van \'t jaar</button>'+
+             '<button class="lvlbtn sembtn'+(semester===2?' sel':'')+'" data-s="2">Einde van \'t jaar</button>';
   upcard.innerHTML='<div class="mg-top"><span class="pill">UFO-upgrades</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     rows+
     '<div class="tname" style="text-align:center;margin:14px 0 2px">Moeilijkheidsgraad</div>'+
-    '<div class="tdesc" style="text-align:center;margin-bottom:6px">Kies het leerjaar voor de rekenvragen</div>'+
+    '<div class="tdesc" style="text-align:center;margin-bottom:6px">Kies leerjaar + periode voor de vragen</div>'+
     '<div class="lvlrow">'+lvls+'</div>'+
-    '<button class="btn ghost" id="upreset" style="margin:10px 0 4px">Voortgang wissen</button><br>'+
+    '<div class="semrow" style="margin-top:8px">'+sems+'</div>'+
+    '<button class="btn ghost" id="upreset" style="margin:12px 0 4px">Voortgang wissen</button><br>'+
     '<button class="btn" id="upclose" style="margin-top:6px">Sluiten</button>';
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ ufo.color=b.dataset.c; scheduleSave(); });
-  upcard.querySelectorAll('.lvlbtn').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l); scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.lvlbtn:not(.sembtn)').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l); scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s); scheduleSave(); buildUpgradePanel(); });
   document.getElementById('upreset').onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   document.getElementById('upclose').onclick=closeUpgrades;
 }
@@ -554,12 +611,21 @@ function showStart(returning){
     : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
   const nameField =
     '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
+  const semrow =
+    '<div class="ob-sentence" style="margin-top:12px">Wanneer in het schooljaar?</div>'+
+    '<div class="semrow">'+
+      '<button class="lvlbtn sembtn'+(semester===1?' sel':'')+'" data-s="1">Begin van \'t jaar</button>'+
+      '<button class="lvlbtn sembtn'+(semester===2?' sel':'')+'" data-s="2">Einde van \'t jaar</button>'+
+    '</div>';
   startcard.innerHTML = head + nameField +
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
     '<div class="grade-grid">'+grid+'</div>'+
+    semrow+
     '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>';
   startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
     startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
+  startcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s);
+    startcard.querySelectorAll('.sembtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
   const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
   document.getElementById('startbtn').onclick=()=>{

@@ -11,7 +11,7 @@ Gebaseerd op het analysedocument (fase 0/1 — POC/MVP). Mobile-first, **touch**
 - 🛸 Bestuurbare UFO (sleep-joystick), rondzwevende rotsen, zacht terugkaatsen (geen straf)
 - 🟡 Beams voor **Rekenen** en **Logica** (10 vragen, procedureel gegenereerd) — **Lezen** = "komt binnenkort"
 - ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (20/50/75/150/200)
-- 🎚️ Moeilijkheidsgraad per **leerjaar (LJ1–LJ6)** — kiesbaar bij de start en in het upgrade-paneel
+- 🎚️ Moeilijkheidsgraad per **leerjaar (LJ1–LJ6)** én **semester** (begin/einde schooljaar) — kiesbaar bij de start en in het upgrade-paneel. Echt leerplan voor LJ1–LJ2 (zie [LEERPLAN.md](LEERPLAN.md))
 - 💾 **Voortgang wordt opgeslagen** (localStorage) en hervat na sluiten
 - 📲 **PWA**: toe te voegen aan beginscherm, werkt **offline**, voelt als een app
 - 🔒 Kindveilig: geen advertenties, geen externe links, geen trackers, geen aankopen
