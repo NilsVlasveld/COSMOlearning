@@ -548,11 +548,11 @@ function showStart(returning){
     return '<button class="grade'+(lv===level?' sel':'')+'" data-l="'+lv+'" style="background:'+g.c+'">'+
       '<div class="num">'+g.n+'</div><div class="lbl">leerjaar</div></button>';
   }).join('');
-  const head = returning
+  const head = (returning && hasName())
     ? '<div class="mg-msg ob-hi">Welkom terug! 🛸</div>'+
-      '<div class="ob-sentence">Fijn dat je er weer bent'+(hasName()?', <b>'+playerName+'</b>':'')+'. Je hebt al <b>'+points+' ★</b>!</div>'
+      '<div class="ob-sentence">Je hebt al <b>'+points+' ★</b>! Mijn naam is…</div>'
     : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
-  const nameField = returning ? '' :
+  const nameField =
     '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
   startcard.innerHTML = head + nameField +
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
