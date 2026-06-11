@@ -99,6 +99,24 @@
   .grade.sel { box-shadow:0 0 0 4px #FFD24A; transform:translateY(-2px); }
   .grade.sel::after { content:'✓'; position:absolute; top:5px; right:8px; font-size:13px; color:#1E1B5E; }
 
+  /* subtiel aftel-chipje (volgende upgrade) */
+  #nextup { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 40px); display:flex; align-items:center; gap:6px;
+    background:rgba(30,27,94,.55); color:#fff; font-weight:600; font-size:12px; padding:5px 10px; border-radius:13px; }
+  #nextup .nu-ic { font-size:14px; }
+  #nextup .nu-tx { opacity:.9; }
+  #nextup .nu-need { background:rgba(255,210,74,.22); color:#FFE7A0; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
+
+  /* feestmoment bij nieuwe upgrade */
+  #celebrate { z-index:30; }
+  #confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .confetti { position:absolute; top:-26px; animation-name:fall; animation-timing-function:linear; animation-iteration-count:1; }
+  @keyframes fall { 0%{ transform:translateY(0) rotate(0); opacity:1; } 100%{ transform:translateY(110vh) rotate(680deg); opacity:.85; } }
+  .cele-card { animation:pop .45s cubic-bezier(.2,1.2,.4,1); max-width:380px; }
+  .cele-burst { font-size:62px; line-height:1.1; animation:burst .8s ease; }
+  .cele-name { font-size:21px; font-weight:800; color:#FFD24A; margin:2px 0 8px; }
+  @keyframes pop { 0%{ transform:scale(.6); opacity:0; } 70%{ transform:scale(1.05); } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes burst { 0%{ transform:scale(.3) rotate(-18deg); } 60%{ transform:scale(1.25) rotate(8deg); } 100%{ transform:scale(1) rotate(0); } }
+
   #toast { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.8);
     background:#FFD24A; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:18px; font-size:18px; font-weight:700;
     padding:12px 22px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:25; text-align:center; max-width:80%; }
@@ -113,6 +131,7 @@
   <svg class="star" viewBox="-8 -8 16 16"><path d="M0 -7 L1.6 -1.6 L7 0 L1.6 1.6 L0 7 L-1.6 1.6 L-7 0 L-1.6 -1.6 Z" fill="#FFD24A" stroke="#1E1B5E" stroke-width="1"/></svg>
   <span id="ptsval">0</span>
 </div>
+<div class="hud" id="nextup"></div>
 <button id="ubtn">UFO upgrades</button>
 <div class="hud" id="dimname"></div>
 <div id="hint">Sleep om te vliegen — zoek de beams!</div>
@@ -121,6 +140,7 @@
 <div id="mg" class="overlay"><div class="card" id="mgcard"></div></div>
 <div id="up" class="overlay"><div class="card" id="upcard"></div></div>
 <div id="start" class="overlay"><div class="card" id="startcard"></div></div>
+<div id="celebrate" class="overlay"><div id="confetti"></div><div class="card cele-card" id="celcard"></div></div>
 
 <script>
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
@@ -231,20 +251,31 @@ let semester=2; // 1 = begin schooljaar, 2 = einde schooljaar (moeilijker)
 
 // upgrades (totaal sterren)
 const UPGRADES=[
-  {at:20, key:'color', name:'Nieuwe kleur kiezen', desc:'Kies zelf de kleur van je UFO'},
-  {at:50, key:'trail', name:'Sterren-spoor', desc:'Een spoor van sterren achter je UFO'},
-  {at:75, key:'wings', name:'Ruimtevleugels', desc:'Stoere vleugels aan je UFO'},
-  {at:150,key:'turbo', name:'Turbo-boost', desc:'Vlieg sneller door de ruimte'},
-  {at:200,key:'gold', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
+  {at:20, key:'color', short:'Nieuwe kleur', icon:'🎨', name:'Nieuwe kleur kiezen', desc:'Kies zelf de kleur van je UFO'},
+  {at:50, key:'trail', short:'Sterren-spoor', icon:'✨', name:'Sterren-spoor', desc:'Een spoor van sterren achter je UFO'},
+  {at:75, key:'wings', short:'Vleugels', icon:'🪽', name:'Ruimtevleugels', desc:'Stoere vleugels aan je UFO'},
+  {at:150,key:'turbo', short:'Turbo', icon:'⚡', name:'Turbo-boost', desc:'Vlieg sneller door de ruimte'},
+  {at:200,key:'gold', short:'Gouden UFO', icon:'👑', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
 ];
 const feat={color:false,trail:false,wings:false,turbo:false,gold:false};
-function checkUpgrades(){
-  for(const u of UPGRADES){ if(!feat[u.key] && points>=u.at){ feat[u.key]=true; applyUpgrade(u); } }
+let pendingUp=[]; // upgrades die nog "gevierd" moeten worden
+function checkUpgrades(silent){
+  for(const u of UPGRADES){ if(!feat[u.key] && points>=u.at){ feat[u.key]=true; applyUpgrade(u,silent); } }
+  updateNextUp();
 }
-function applyUpgrade(u){
+function applyUpgrade(u,silent){
   if(u.key==='turbo') curMaxV=560;
-  if(u.key==='gold') ufo.color='#F2C84B';
-  toast('Upgrade ontgrendeld: '+u.name+'!'); scheduleSave();
+  if(u.key==='gold' && !silent) ufo.color='#F2C84B';
+  if(!silent) pendingUp.push(u);
+  scheduleSave();
+}
+// subtiel aftel-systeem rechtsboven: toon de eerstvolgende upgrade + hoeveel sterren nog
+function updateNextUp(){
+  const el=document.getElementById('nextup'); if(!el) return;
+  const nx=UPGRADES.find(u=>!feat[u.key]);
+  if(!nx){ el.innerHTML='<span class="nu-ic">🏆</span><span class="nu-tx">Alles vrij!</span>'; return; }
+  const need=Math.max(0,nx.at-points);
+  el.innerHTML='<span class="nu-ic">'+nx.icon+'</span><span class="nu-tx">'+nx.short+'</span><span class="nu-need">nog '+need+' ★</span>';
 }
 
 const keys={};
@@ -538,7 +569,36 @@ function showComingSoon(){
     '<button class="btn" id="mgdone">Verder vliegen</button>';
   mg.classList.add('show'); document.getElementById('mgdone').onclick=closeMiniGame;
 }
-function closeMiniGame(){ mg.classList.remove('show'); paused=false; last=performance.now(); }
+function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ playCelebration(); } else { paused=false; last=performance.now(); } }
+
+// ---- feestmoment bij een nieuwe upgrade ----
+const celEl=document.getElementById('celebrate'), celcard=document.getElementById('celcard');
+function spawnConfetti(){
+  const layer=document.getElementById('confetti'); if(!layer) return; layer.innerHTML='';
+  const cols=['#FFD24A','#33C9C6','#F58BB0','#97C459','#5BA8E8','#C58BE8'];
+  for(let i=0;i<36;i++){ const s=document.createElement('span'); s.className='confetti'; s.textContent='★';
+    s.style.left=(Math.random()*100)+'%'; s.style.color=cols[i%cols.length];
+    s.style.fontSize=(10+Math.random()*16)+'px';
+    s.style.animationDuration=(1.6+Math.random()*1.4)+'s';
+    s.style.animationDelay=(Math.random()*0.5)+'s';
+    layer.appendChild(s); }
+}
+function clearConfetti(){ const layer=document.getElementById('confetti'); if(layer) layer.innerHTML=''; }
+function playCelebration(){
+  paused=true; const u=pendingUp[0]; spawnConfetti();
+  const hint = u.key==='color' ? '<div class="mg-sub" style="margin-top:4px">Kies je kleur bij <b>UFO-upgrades</b>!</div>' : '';
+  celcard.innerHTML='<div class="cele-burst">'+u.icon+'</div>'+
+    '<div class="mg-msg ob-hi">Hoera, een upgrade!</div>'+
+    '<div class="cele-name">'+u.name+'</div>'+
+    '<div class="mg-sub">'+u.desc+'</div>'+hint+
+    '<button class="btn" id="celbtn" style="margin-top:10px">Joepie! 🚀</button>';
+  celEl.classList.add('show');
+  document.getElementById('celbtn').onclick=()=>{
+    pendingUp.shift(); clearConfetti();
+    if(pendingUp.length){ playCelebration(); }
+    else { celEl.classList.remove('show'); paused=false; last=performance.now(); updateNextUp(); }
+  };
+}
 
 // ---- stars / progression ----
 function addStars(n){
@@ -644,6 +704,7 @@ if(returning){ // herstel positie nabij blackhole/centrum van huidig stelsel
   ufo.x=Math.min(cur.w-120,640); ufo.y=Math.min(cur.h-120,640);
   cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
 }
+checkUpgrades(true); // pas eerder verdiende upgrades stil toe + vul het aftel-chipje
 updateGoalHud();
 showStart(returning);
 
