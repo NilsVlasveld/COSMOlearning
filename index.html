@@ -101,6 +101,13 @@
     border-radius:10px; font-size:12px; font-weight:700; padding:5px 11px; cursor:pointer; }
   .stylechip.sel { background:#FFD24A; color:#1E1B5E; border-color:#1E1B5E; }
   .stylechip:active { transform:scale(.95); }
+  .ufothumbs { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .ufopick { text-align:center; }
+  .ufothumb { display:block; width:84px; height:62px; background:rgba(20,18,70,.4); border-radius:14px;
+    border:3px solid transparent; cursor:pointer; }
+  .ufothumb.sel { border-color:#FFD24A; }
+  .ufothumb:active { transform:scale(.95); }
+  .ufolabel { font-size:11px; font-weight:700; margin-top:3px; opacity:.9; }
   .lvlrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 4px; }
   .semrow { display:flex; gap:10px; justify-content:center; margin:6px 0 2px; }
   .semrow .lvlbtn { flex:1; max-width:170px; }
@@ -215,7 +222,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, feat:{...feat}, equip:{...equip}, style:{...style},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -227,6 +234,7 @@ function applySave(data){
   level=data.level||1; semester=data.semester||2; arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.domeColor) ufo.dome=data.domeColor;
+  if(data.ufoModel) ufoModel=data.ufoModel;
   if(data.style) Object.assign(style, data.style);
   if(data.feat) Object.assign(feat, data.feat);
   if(data.equip) Object.assign(equip, data.equip);
@@ -431,13 +439,19 @@ function travel(target){
   showDimName(); toast('Welkom in het '+cur.name+'!'); updateGoalHud(); scheduleSave();
 }
 
+let ufoModel='klassiek';
 function drawUFO(g,scale){
   g.save(); g.scale(scale,scale); g.lineJoin='round'; g.lineCap='round';
+  if(equip.wings){ g.fillStyle=ufoBody(); g.strokeStyle=C_NAVY; g.lineWidth=3; drawWing(g,1,style.wings); drawWing(g,-1,style.wings); }
+  (MODELS_BY_ID[ufoModel]||MODELS_BY_ID.klassiek).draw(g);
+  g.restore();
+}
+// ---- UFO-modellen ----
+function drawModelClassic(g){
   g.fillStyle=C_LEG; g.strokeStyle=C_NAVY; g.lineWidth=3;
   for(const lx of [-42,-5,31]){ roundRect(g,lx,16,11,22,5); g.fill(); g.stroke(); }
   g.fillStyle='#A99BE8'; g.lineWidth=2.5;
   for(const f of [[-36,40],[0,44],[36,40]]){ g.beginPath(); g.arc(f[0],f[1],7.5,0,6.2832); g.fill(); g.stroke(); }
-  if(equip.wings){ g.fillStyle=ufoBody(); g.lineWidth=3; drawWing(g,1,style.wings); drawWing(g,-1,style.wings); }
   g.fillStyle=C_PINK; g.lineWidth=3; ellipse(g,0,20,64,18); g.fill(); g.stroke();
   g.fillStyle=ufoDome(); g.lineWidth=3.5; ellipse(g,0,-14,40,34); g.fill(); g.stroke();
   g.fillStyle=ufoBody(); ellipse(g,0,6,72,27); g.fill(); g.stroke();
@@ -445,8 +459,43 @@ function drawUFO(g,scale){
   g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.5;
   for(const p of [[-52,6],[52,2],[0,16]]){ g.beginPath(); g.arc(p[0],p[1],6,0,6.2832); g.fill(); g.stroke(); }
   g.fillStyle='rgba(226,246,250,.9)'; ellipse(g,-13,-26,14,8); g.fill();
-  g.restore();
 }
+function drawModelBubble(g){ // grote glazen koepel
+  g.strokeStyle=C_NAVY;
+  g.fillStyle=C_LEG; g.lineWidth=3; for(const lx of [-34,23]){ roundRect(g,lx,20,11,20,5); g.fill(); g.stroke(); }
+  g.fillStyle='#A99BE8'; g.lineWidth=2.5; for(const f of [[-28,42],[28,42]]){ g.beginPath(); g.arc(f[0],f[1],7.5,0,6.2832); g.fill(); g.stroke(); }
+  g.fillStyle=ufoBody(); g.lineWidth=3; ellipse(g,0,20,60,16); g.fill(); g.stroke();
+  g.fillStyle=ufoDome(); g.lineWidth=3.5; g.beginPath(); g.arc(0,12,42,Math.PI*1.06,Math.PI*-0.06); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(-15,-9,11,16,-0.4,0,6.2832); g.fill();
+  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.5; for(const p of [[-46,20],[46,20],[0,32]]){ g.beginPath(); g.arc(p[0],p[1],5.5,0,6.2832); g.fill(); g.stroke(); }
+}
+function drawModelRacer(g){ // slank, snel
+  g.strokeStyle=C_NAVY;
+  g.fillStyle=C_LEG; g.lineWidth=3; for(const lx of [-30,12]){ roundRect(g,lx,16,10,18,5); g.fill(); g.stroke(); }
+  g.fillStyle='#A99BE8'; g.lineWidth=2.5; for(const f of [[-25,36],[17,36]]){ g.beginPath(); g.arc(f[0],f[1],6.5,0,6.2832); g.fill(); g.stroke(); }
+  g.fillStyle=ufoBody(); g.lineWidth=3; g.beginPath(); g.moveTo(-44,2); g.lineTo(-72,-30); g.lineTo(-28,0); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(84,6); g.quadraticCurveTo(30,-16,-40,-8); g.quadraticCurveTo(-82,-2,-78,8); g.quadraticCurveTo(-70,20,-30,22); g.quadraticCurveTo(30,26,84,6); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle=ufoDome(); g.lineWidth=3; g.beginPath(); g.ellipse(32,-2,24,15,-0.18,0,6.2832); g.fill(); g.stroke();
+  g.fillStyle='rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(26,-7,7,5,-0.3,0,6.2832); g.fill();
+  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.2; for(const p of [[-50,9],[-26,15],[-2,17]]){ g.beginPath(); g.arc(p[0],p[1],4.5,0,6.2832); g.fill(); g.stroke(); }
+}
+function drawModelCrystal(g){ // hoekig kristal
+  g.strokeStyle=C_NAVY;
+  g.fillStyle=C_LEG; g.lineWidth=3; for(const lx of [-34,23]){ roundRect(g,lx,18,10,18,5); g.fill(); g.stroke(); }
+  g.fillStyle='#A99BE8'; g.lineWidth=2.5; for(const f of [[-29,38],[28,38]]){ g.beginPath(); g.arc(f[0],f[1],7,0,6.2832); g.fill(); g.stroke(); }
+  g.fillStyle=ufoBody(); g.lineWidth=3; g.beginPath(); g.moveTo(0,30); g.lineTo(-74,8); g.lineTo(-42,-6); g.lineTo(0,-2); g.lineTo(42,-6); g.lineTo(74,8); g.closePath(); g.fill(); g.stroke();
+  g.strokeStyle='rgba(30,27,94,.35)'; g.lineWidth=1.6; g.beginPath(); g.moveTo(-42,-6); g.lineTo(0,30); g.lineTo(42,-6); g.moveTo(-74,8); g.lineTo(0,-2); g.lineTo(74,8); g.stroke();
+  g.fillStyle=ufoDome(); g.strokeStyle=C_NAVY; g.lineWidth=3; g.beginPath(); g.moveTo(0,-44); g.lineTo(-32,-4); g.lineTo(0,4); g.lineTo(32,-4); g.closePath(); g.fill(); g.stroke();
+  g.strokeStyle='rgba(30,27,94,.35)'; g.lineWidth=1.5; g.beginPath(); g.moveTo(0,-44); g.lineTo(0,4); g.stroke();
+  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.4; for(const p of [[-52,7],[52,7],[0,20]]){ g.beginPath(); g.arc(p[0],p[1],5.5,0,6.2832); g.fill(); g.stroke(); }
+}
+const MODELS=[
+  {id:'klassiek', label:'Klassiek', draw:drawModelClassic},
+  {id:'bol',      label:'Bol',      draw:drawModelBubble},
+  {id:'racer',    label:'Racer',    draw:drawModelRacer},
+  {id:'kristal',  label:'Kristal',  draw:drawModelCrystal}
+];
+const MODELS_BY_ID={}; MODELS.forEach(m=>MODELS_BY_ID[m.id]=m);
 function drawWing(g,s,st){ // s=1 rechts, s=-1 links
   g.save(); g.scale(s,1); g.beginPath();
   if(st==='rond'){ g.ellipse(84,16,24,13,0,0,6.2832); g.fill(); g.stroke(); }
@@ -896,6 +945,11 @@ document.getElementById('ubtn').onclick=openUpgrades;
 document.getElementById('name').onclick=()=>{ if(mode==='hub' && !mg.classList.contains('show') && !upEl.classList.contains('show')) showStart(true); };
 function openUpgrades(){ paused=true; upgradeBadge=false; updateUfoBtn(); buildUpgradePanel(); upEl.classList.add('show'); }
 function closeUpgrades(){ upEl.classList.remove('show'); paused=false; last=performance.now(); }
+function drawModelThumb(c,id){
+  const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
+  g.save(); g.translate(c.width/2, c.height/2+5); g.scale(0.42,0.42); g.lineJoin='round'; g.lineCap='round';
+  (MODELS_BY_ID[id]||MODELS_BY_ID.klassiek).draw(g); g.restore();
+}
 function drawUfoPreview(){
   const c=document.getElementById('ufoprev'); if(!c) return; const g=c.getContext('2d');
   g.clearRect(0,0,c.width,c.height);
@@ -928,10 +982,15 @@ function buildUpgradePanel(){
       '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div>'+chips+'</div>'+
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
+  const thumbs = MODELS.map(m=>'<div class="ufopick"><canvas class="ufothumb'+(ufoModel===m.id?' sel':'')+'" width="84" height="62" data-m="'+m.id+'"></canvas><div class="ufolabel">'+m.label+'</div></div>').join('');
+  const picker = '<div class="opt" style="display:block"><div class="opt-name" style="margin-bottom:7px">🛸 Kies je UFO</div><div class="ufothumbs">'+thumbs+'</div></div>';
   upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 UFO garage</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
+    picker+
     rows+
     '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';
+  MODELS.forEach(m=>{ const c=upcard.querySelector('.ufothumb[data-m="'+m.id+'"]'); if(c) drawModelThumb(c,m.id); });
+  upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ ufoModel=c.dataset.m; scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.stylechip').forEach(b=>b.onclick=()=>{ style[b.dataset.sk]=b.dataset.si; scheduleSave(); buildUpgradePanel(); });
