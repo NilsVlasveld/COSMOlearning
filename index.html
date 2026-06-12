@@ -57,9 +57,14 @@
   .qbox { background:#C2E1F8; color:#1E1B5E; border:3.5px solid #1E1B5E; border-radius:20px;
     padding:18px 10px; font-size:34px; font-weight:700; margin:6px 0 20px; min-height:78px; display:flex; align-items:center; justify-content:center; }
   .qbox.seq { font-size:24px; letter-spacing:1px; }
+  .qbox.draw { padding:12px; min-height:0; }
+  .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
+  #qcanvas { display:block; margin:0 auto; max-width:100%; height:auto; }
   .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .answers.wide { flex-direction:column; gap:10px; }
   .ans { flex:1 1 0; min-width:78px; max-width:120px; aspect-ratio:1/1; border:3.5px solid #1E1B5E; border-radius:50%;
     background:#FFE7A0; color:#1E1B5E; font-size:26px; font-weight:700; cursor:pointer; transition:transform .1s; }
+  .ans.wide { flex:1 1 100%; width:100%; max-width:none; aspect-ratio:auto; border-radius:16px; min-height:0; padding:14px 14px; font-size:19px; }
   .ans:nth-child(2){ background:#C8E6A0; } .ans:nth-child(3){ background:#F4B9CE; }
   .ans:active{ transform:scale(.94); } .ans.good{ background:#7BE0A0 !important; } .ans.bad{ background:#F08A8A !important; } .ans:disabled{ cursor:default; }
   .mg-msg { font-size:22px; font-weight:700; margin:8px 0 16px; }
@@ -216,7 +221,10 @@ function star4(g,x,y,s){ g.beginPath(); g.moveTo(x,y-s); g.lineTo(x+s*0.32,y-s*0
 const C_NAVY='#1E1B5E', C_BODY='#33C9C6', C_DOME='#A6E4EE', C_PINK='#F58BB0', C_LIGHT='#FFD24A', C_LEG='#8B7BD8';
 const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'plus'},
   logica:{color:'#97C459',core:'#C8E6A0',label:'Logica',icon:'dots'},
-  lezen:{color:'#5BA8E8',core:'#C2E1F8',label:'Lezen',icon:'book'} };
+  lezen:{color:'#5BA8E8',core:'#C2E1F8',label:'Lezen',icon:'book'},
+  klok:{color:'#F2A65A',core:'#FFD9B0',label:'Klok',icon:'clock'},
+  vormen:{color:'#C58BE8',core:'#E6CFF5',label:'Vormen',icon:'shapes'},
+  ruimte:{color:'#33C9C6',core:'#BEEDEB',label:'Ruimte',icon:'planet'} };
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -248,7 +256,12 @@ function applySave(data){
   if(Array.isArray(data.dims)){
     data.dims.forEach((sd,i)=>{ const d=dims[i]; if(!d) return;
       if(Array.isArray(sd.beams) && sd.beams.length){
-        d.beams=sd.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:!!b.played})); }
+        const fresh=d.beams; // nieuw aangemaakte beams (incl. nieuwe vakken)
+        const restored=sd.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:!!b.played}));
+        // voeg beams van nieuwe vakken toe die nog niet in de save zaten
+        const newSubs=['klok','vormen','ruimte'];
+        for(const b of fresh){ if(newSubs.includes(b.subject) && !restored.some(r=>r.subject===b.subject && Math.abs(r.x-b.x)<6 && Math.abs(r.y-b.y)<6)) restored.push({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false}); }
+        d.beams=restored; }
       d.blackhole.unlocked=!!sd.bh; });
   }
   cur=dims[active];
@@ -257,12 +270,13 @@ function applySave(data){
 
 const DIM_SPECS=[
   { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
-    beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'rekenen'},
-      {x:2950,y:1380,subject:'lezen'},{x:900,y:2150,subject:'logica'},{x:3200,y:2300,subject:'rekenen'} ],
+    beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
+      {x:2950,y:1380,subject:'lezen'},{x:900,y:2150,subject:'vormen'},{x:3200,y:2300,subject:'rekenen'},
+      {x:1800,y:2200,subject:'ruimte'},{x:300,y:1300,subject:'logica'} ],
     blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:900} },
   { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:22,
-    beams:[ {x:520,y:1900,subject:'rekenen'},{x:1700,y:400,subject:'logica'},{x:2700,y:1500,subject:'rekenen'},
-      {x:1500,y:2050,subject:'lezen'},{x:2600,y:520,subject:'logica'} ],
+    beams:[ {x:520,y:1900,subject:'rekenen'},{x:1700,y:400,subject:'vormen'},{x:2700,y:1500,subject:'klok'},
+      {x:1500,y:2050,subject:'lezen'},{x:2600,y:520,subject:'logica'},{x:900,y:1100,subject:'ruimte'},{x:2100,y:1900,subject:'rekenen'} ],
     blackhole:{x:1600,y:1200,target:0}, portal:{x:700,y:700} }
 ];
 function buildDimension(spec){
@@ -549,6 +563,13 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='dots'){ for(const p of [[-6,-6],[6,-6],[-6,6],[6,6]]){ g.beginPath(); g.arc(p[0],p[1],3,0,6.2832); g.fill(); } }
   else if(s.icon==='book'){ g.beginPath(); g.moveTo(0,-6); g.bezierCurveTo(-4,-10,-10,-10,-13,-7); g.lineTo(-13,7);
     g.bezierCurveTo(-10,4,-4,4,0,8); g.bezierCurveTo(4,4,10,4,13,7); g.lineTo(13,-7); g.bezierCurveTo(10,-10,4,-10,0,-6); g.closePath(); g.fill(); }
+  else if(s.icon==='clock'){ g.lineWidth=2.6; g.beginPath(); g.arc(0,0,10,0,6.2832); g.stroke();
+    g.lineCap='round'; g.beginPath(); g.moveTo(0,0); g.lineTo(0,-6); g.moveTo(0,0); g.lineTo(5,2); g.stroke(); }
+  else if(s.icon==='shapes'){ g.lineWidth=2.4;
+    g.beginPath(); g.moveTo(-2,-9); g.lineTo(7,6); g.lineTo(-11,6); g.closePath(); g.stroke(); // driehoek
+    g.strokeRect(2,-3,9,9); }
+  else if(s.icon==='planet'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,7,0,6.2832); g.stroke();
+    g.save(); g.rotate(-0.5); g.beginPath(); g.ellipse(0,0,13,4.5,0,0,6.2832); g.stroke(); g.restore(); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -852,19 +873,109 @@ function genSeq(){
 }
 function distractors(ans){ const set=new Set([ans]), out=[]; const sp=Math.max(4,Math.round(ans*0.12));
   while(out.length<2){ let d=ans+Math.floor(rnd(-sp,sp+1)); if(d<0)d=ans+Math.floor(rnd(1,sp+1)); if(!set.has(d)){ set.add(d); out.push(d); } } return out; }
+function numOpts(ans){ return [ans,...distractors(ans)].map(String).sort(()=>Math.random()-0.5); }
+
+// ===== KLOK lezen =====
+function nextHour(h){ return h===12?1:h+1; }
+function clockLabel(h,m){
+  if(m===0) return h+' uur';
+  if(m===15) return 'kwart over '+h;
+  if(m===30) return 'half '+nextHour(h);
+  if(m===45) return 'kwart voor '+nextHour(h);
+  return h+'u'+m;
+}
+function drawClock(g,w,hh,hour,min){
+  const cx=w/2, cy=hh/2, R=Math.min(w,hh)/2-6; g.lineJoin='round'; g.lineCap='round';
+  g.fillStyle='#fff'; g.strokeStyle=C_NAVY; g.lineWidth=4; g.beginPath(); g.arc(cx,cy,R,0,6.2832); g.fill(); g.stroke();
+  g.fillStyle=C_NAVY; g.font='bold '+(R*0.2)+'px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  for(let n=1;n<=12;n++){ const a=(n/12)*6.2832-Math.PI/2; g.fillText(n, cx+Math.cos(a)*R*0.8, cy+Math.sin(a)*R*0.8); }
+  const ma=(min/60)*6.2832-Math.PI/2, ha=(((hour%12)+min/60)/12)*6.2832-Math.PI/2;
+  g.strokeStyle=C_NAVY; g.lineWidth=5; g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(ha)*R*0.45, cy+Math.sin(ha)*R*0.45); g.stroke();
+  g.strokeStyle='#F58BB0'; g.lineWidth=4; g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(ma)*R*0.68, cy+Math.sin(ma)*R*0.68); g.stroke();
+  g.fillStyle=C_NAVY; g.beginPath(); g.arc(cx,cy,4.5,0,6.2832); g.fill();
+}
+function genKlok(){
+  const mins = level<=2 ? [0,30] : [0,15,30,45];
+  const h=ri(1,12), m=pick(mins), label=clockLabel(h,m);
+  const opts=new Set([label]); let t=0;
+  while(opts.size<3 && t<40){ t++; opts.add(clockLabel(ri(1,12),pick(mins))); }
+  while(opts.size<3) opts.add(ri(1,12)+' uur');
+  return { prompt:'Hoe laat is het?', draw:(g,w,hh)=>drawClock(g,w,hh,h,m), options:[...opts].sort(()=>Math.random()-0.5), correct:label, wide:true };
+}
+
+// ===== VORMEN & meetkunde =====
+const SHAPES=[ {id:'cirkel',name:'Cirkel',sides:0},{id:'driehoek',name:'Driehoek',sides:3},
+  {id:'vierkant',name:'Vierkant',sides:4},{id:'rechthoek',name:'Rechthoek',sides:4},
+  {id:'vijfhoek',name:'Vijfhoek',sides:5},{id:'zeshoek',name:'Zeshoek',sides:6},{id:'ster',name:'Ster',sides:5} ];
+function drawShape(g,w,hh,s){
+  const cx=w/2, cy=hh/2, R=Math.min(w,hh)/2-12; g.lineJoin='round'; g.fillStyle='#FFD24A'; g.strokeStyle=C_NAVY; g.lineWidth=4;
+  if(s.id==='cirkel'){ g.beginPath(); g.arc(cx,cy,R*0.9,0,6.2832); g.fill(); g.stroke(); return; }
+  if(s.id==='rechthoek'){ roundRect(g,cx-R,cy-R*0.62,R*2,R*1.24,9); g.fill(); g.stroke(); return; }
+  if(s.id==='vierkant'){ roundRect(g,cx-R*0.86,cy-R*0.86,R*1.72,R*1.72,9); g.fill(); g.stroke(); return; }
+  if(s.id==='ster'){ g.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?R*0.42:R*0.95, x=cx+Math.cos(a)*rad, y=cy+Math.sin(a)*rad; i?g.lineTo(x,y):g.moveTo(x,y); } g.closePath(); g.fill(); g.stroke(); return; }
+  const n=s.sides; g.beginPath();
+  for(let i=0;i<n;i++){ const a=-Math.PI/2+i/n*6.2832, x=cx+Math.cos(a)*R*0.92, y=cy+Math.sin(a)*R*0.92; i?g.lineTo(x,y):g.moveTo(x,y); }
+  g.closePath(); g.fill(); g.stroke();
+}
+function genVormen(){
+  const pool = level<=2 ? SHAPES.filter(s=>['cirkel','driehoek','vierkant','rechthoek'].includes(s.id)) : SHAPES;
+  const s=pick(pool);
+  if(level>=2 && s.sides>0 && Math.random()<0.4){
+    const opts=new Set([String(s.sides)]); while(opts.size<3) opts.add(String(ri(3,7)));
+    return { prompt:'Hoeveel hoeken?', draw:(g,w,h)=>drawShape(g,w,h,s), options:[...opts].sort(()=>Math.random()-0.5), correct:String(s.sides), wide:false };
+  }
+  const names=pool.map(x=>x.name), opts=new Set([s.name]); while(opts.size<3) opts.add(pick(names));
+  return { prompt:'Welke vorm is dit?', draw:(g,w,h)=>drawShape(g,w,h,s), options:[...opts].sort(()=>Math.random()-0.5), correct:s.name, wide:true };
+}
+
+// ===== WERELDORIËNTATIE (ruimte, natuur, tijd) =====
+const WO_Q=[
+  {q:'Welke planeet staat het dichtst bij de zon?', a:['Mercurius','Aarde','Mars'], c:'Mercurius'},
+  {q:'Op welke planeet wonen wij?', a:['De Aarde','Jupiter','Venus'], c:'De Aarde'},
+  {q:'Wat zien we vooral overdag aan de hemel?', a:['De zon','De maan','Sterren'], c:'De zon'},
+  {q:'Welke planeet noemen we de rode planeet?', a:['Mars','Saturnus','De Aarde'], c:'Mars'},
+  {q:'Welke planeet heeft grote ringen?', a:['Saturnus','Mercurius','Venus'], c:'Saturnus'},
+  {q:'Wat geeft ons licht en warmte?', a:['De zon','De maan','Een wolk'], c:'De zon'},
+  {q:'Welk seizoen komt na de lente?', a:['De zomer','De winter','De herfst'], c:'De zomer'},
+  {q:'In welk seizoen vallen de blaadjes?', a:['De herfst','De lente','De zomer'], c:'De herfst'},
+  {q:'In welk seizoen sneeuwt het vaak?', a:['De winter','De zomer','De lente'], c:'De winter'},
+  {q:'Hoeveel dagen heeft een week?', a:['7','5','10'], c:'7'},
+  {q:'Hoeveel poten heeft een spin?', a:['8','6','4'], c:'8'},
+  {q:'Waar leeft een vis?', a:['In het water','In een boom','Onder de grond'], c:'In het water'},
+  {q:'Welk dier kan vliegen?', a:['Een vogel','Een vis','Een slang'], c:'Een vogel'},
+  {q:'Wat heb je nodig om te ademen?', a:['Lucht','Zand','Steen'], c:'Lucht'},
+  {q:'Welke vorm heeft de volle maan?', a:['Rond','Vierkant','Driehoek'], c:'Rond'},
+  {q:'Wat draait er rond de Aarde?', a:['De maan','De zon','Mars'], c:'De maan'},
+  {q:'Hoeveel poten heeft een hond?', a:['4','2','6'], c:'4'},
+  {q:'Wanneer gaan de meeste kinderen slapen?', a:['s Avonds','s Morgens','s Middags'], c:'s Avonds'}
+];
+function genRuimte(){ const it=pick(WO_Q); return { prompt:it.q, seq:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
+
+function makeQuestion(subject){
+  if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
+  if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
+  if(subject==='klok') return genKlok();
+  if(subject==='vormen') return genVormen();
+  if(subject==='ruimte') return genRuimte();
+  return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
+}
 function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ showResult(); return; }
-  const data=st.subject==='rekenen'?genMath():genSeq();
-  const opts=[data.ans,...distractors(data.ans)].sort(()=>Math.random()-0.5); const s=SUBJECTS[st.subject];
-  mgcard.innerHTML='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+' · S'+semester+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>'+
-    '<div class="qbox'+(data.seq?' seq':'')+'">'+data.q+'</div>'+
-    '<div class="answers">'+opts.map(o=>'<button class="ans" data-v="'+o+'">'+o+'</button>').join('')+'</div>';
-  mgcard.querySelectorAll('.ans').forEach(btn=>{ btn.onclick=()=>answer(btn,parseInt(btn.dataset.v),data.ans); });
+  const q=makeQuestion(st.subject); const s=SUBJECTS[st.subject];
+  const showS = (st.subject==='rekenen'||st.subject==='logica');
+  const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
+  let qhtml;
+  if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
+  else { qhtml='<div class="qbox'+(q.seq?' seq':'')+'">'+q.prompt+'</div>'; }
+  const ansHtml='<div class="answers'+(q.wide?' wide':'')+'">'+q.options.map(o=>'<button class="ans'+(q.wide?' wide':'')+'" data-v="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</button>').join('')+'</div>';
+  mgcard.innerHTML=head+qhtml+ansHtml;
+  if(q.draw){ const c=document.getElementById('qcanvas'); if(c){ const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); q.draw(g,c.width,c.height); } }
+  mgcard.querySelectorAll('.ans').forEach(btn=>{ btn.onclick=()=>answer(btn, btn.dataset.v, String(q.correct)); });
 }
 function answer(btn,val,correct){
   const btns=mgcard.querySelectorAll('.ans'); btns.forEach(b=>b.disabled=true);
   if(val===correct){ btn.classList.add('good'); mgState.earned+=1; addStars(1); }
-  else { btn.classList.add('bad'); btns.forEach(b=>{ if(parseInt(b.dataset.v)===correct)b.classList.add('good'); }); }
-  mgState.i++; setTimeout(nextQuestion, val===correct?500:950);
+  else { btn.classList.add('bad'); btns.forEach(b=>{ if(b.dataset.v===correct)b.classList.add('good'); }); }
+  mgState.i++; setTimeout(nextQuestion, val===correct?550:1050);
 }
 function showResult(){
   const e=mgState.earned;
