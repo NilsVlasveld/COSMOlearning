@@ -32,6 +32,9 @@
     background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:13px; border:none;
     padding:7px 13px; border-radius:14px; cursor:pointer; }
   #ubtn:active{ transform:scale(.96); }
+  #ubtn.alert::after { content:''; position:absolute; top:-4px; right:-4px; width:13px; height:13px;
+    border-radius:50%; background:#FF6B6B; border:2px solid #6C6CE8; animation:ubtnpulse 1s ease-in-out infinite; }
+  @keyframes ubtnpulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.3); } }
   #dimname { left:50%; transform:translateX(-50%); top:14px; opacity:0; transition:opacity .6s;
     background:rgba(30,27,94,.8); color:#fff; font-weight:600; font-size:14px; padding:6px 16px; border-radius:14px; }
 
@@ -93,6 +96,11 @@
     border-radius:12px; font-size:13px; font-weight:700; padding:7px 16px; cursor:pointer; min-width:62px; }
   .togglebtn.on { background:#7BE0A0; color:#13502E; border-color:#1E1B5E; }
   .togglebtn:active { transform:scale(.95); }
+  .stylechips { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+  .stylechip { background:rgba(255,255,255,.16); color:#fff; border:2px solid rgba(255,255,255,.35);
+    border-radius:10px; font-size:12px; font-weight:700; padding:5px 11px; cursor:pointer; }
+  .stylechip.sel { background:#FFD24A; color:#1E1B5E; border-color:#1E1B5E; }
+  .stylechip:active { transform:scale(.95); }
   .lvlrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 4px; }
   .semrow { display:flex; gap:10px; justify-content:center; margin:6px 0 2px; }
   .semrow .lvlbtn { flex:1; max-width:170px; }
@@ -207,7 +215,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, feat:{...feat}, equip:{...equip},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, feat:{...feat}, equip:{...equip}, style:{...style},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -218,6 +226,8 @@ function applySave(data){
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
   level=data.level||1; semester=data.semester||2; arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
+  if(data.domeColor) ufo.dome=data.domeColor;
+  if(data.style) Object.assign(style, data.style);
   if(data.feat) Object.assign(feat, data.feat);
   if(data.equip) Object.assign(equip, data.equip);
   else { equip.trail=feat.trail; equip.wings=feat.wings; equip.turbo=feat.turbo; equip.gold=feat.gold; } // oude saves
@@ -284,36 +294,44 @@ function spawnBeams(d,n){
 }
 function ensureSupply(d){ if(starsHere<BH_GOAL && brightBeams(d)<3) spawnBeams(d,3); }
 
-const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,invuln:0,shake:0 };
+const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,dome:C_DOME,invuln:0,shake:0 };
+const DOME_COLORS=['#A6E4EE','#C2E1F8','#F4B9CE','#C8E6A0','#D9C2F0','#FFE7A0'];
 const ACCEL=900, FRICTION=1.6;
 let curMaxV=420;
 let playerName='Speler';
 let level=1;    // leerjaar 1..6
 let semester=2; // 1 = begin schooljaar, 2 = einde schooljaar (moeilijker)
 
-// upgrades (totaal sterren)
+// upgrades (totaal sterren) — type 'color' = kleurkiezer, 'toggle' = aan/uit (+ evt. stijlen)
 const UPGRADES=[
-  {at:20, key:'color', short:'Nieuwe kleur', icon:'🎨', name:'Nieuwe kleur kiezen', desc:'Kies zelf de kleur van je UFO'},
-  {at:50, key:'trail', short:'Sterren-spoor', icon:'✨', name:'Sterren-spoor', desc:'Een spoor van sterren achter je UFO'},
-  {at:75, key:'wings', short:'Vleugels', icon:'🪽', name:'Ruimtevleugels', desc:'Stoere vleugels aan je UFO'},
-  {at:150,key:'turbo', short:'Turbo', icon:'⚡', name:'Turbo-boost', desc:'Vlieg sneller door de ruimte'},
-  {at:200,key:'gold', short:'Gouden UFO', icon:'👑', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
+  {at:70, key:'color', type:'color', cols:PALETTE,      short:'Nieuwe kleur', icon:'🎨', name:'Kleur', desc:'Kies de kleur van je UFO'},
+  {at:100,key:'trail', type:'toggle', short:'Sterren-spoor', icon:'✨', name:'Sterren-spoor', desc:'Een spoor achter je UFO',
+    styles:[{id:'lijntjes',label:'Lijntjes'},{id:'sterren',label:'Sterren'},{id:'bollen',label:'Bollen'}]},
+  {at:125,key:'wings', type:'toggle', short:'Vleugels', icon:'🪽', name:'Ruimtevleugels', desc:'Vleugels aan je UFO',
+    styles:[{id:'rond',label:'Rond'},{id:'puntig',label:'Puntig'},{id:'echt',label:'Echt'}]},
+  {at:175,key:'dome', type:'color', cols:DOME_COLORS,   short:'Koepelkleur', icon:'🫧', name:'Koepelkleur', desc:'Kleur van de cockpit'},
+  {at:200,key:'turbo', type:'toggle', short:'Turbo', icon:'⚡', name:'Turbo-boost', desc:'Sneller vliegen + vlammen',
+    styles:[{id:'vlam',label:'Vlam'},{id:'bliksem',label:'Bliksem'},{id:'regenboog',label:'Regenboog'}]},
+  {at:250,key:'gold', type:'toggle', short:'Gouden UFO', icon:'👑', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
 ];
-const feat={color:false,trail:false,wings:false,turbo:false,gold:false}; // ontgrendeld (door sterren)
-const equip={trail:false,wings:false,turbo:false,gold:false};            // wat er nu op de UFO staat
+const feat={color:false,trail:false,wings:false,turbo:false,gold:false,dome:false}; // ontgrendeld (door sterren)
+const equip={trail:false,wings:false,turbo:false,gold:false};                       // toggles die nu opstaan
+const style={trail:'sterren',wings:'puntig',turbo:'vlam'};                          // gekozen variant per optie
 function ufoBody(){ return equip.gold ? '#F2C84B' : ufo.color; }
+function ufoDome(){ return ufo.dome; }
 function applyEquip(){ curMaxV = equip.turbo ? 560 : 420; }
-let pendingUp=[]; // upgrades die nog "gevierd" moeten worden
+let pendingUp=[], upgradeBadge=false; // upgrades die nog "gevierd" moeten worden + badge op de knop
 function checkUpgrades(silent){
   for(const u of UPGRADES){ if(!feat[u.key] && points>=u.at){ feat[u.key]=true; applyUpgrade(u,silent); } }
   updateNextUp();
 }
 function applyUpgrade(u,silent){
-  if(u.key!=='color') equip[u.key]=true; // standaard meteen opzetten bij ontgrendelen
+  if(u.type==='toggle') equip[u.key]=true; // standaard meteen opzetten bij ontgrendelen
   applyEquip();
-  if(!silent) pendingUp.push(u);
+  if(!silent){ pendingUp.push(u); upgradeBadge=true; updateUfoBtn(); }
   scheduleSave();
 }
+function updateUfoBtn(){ const b=document.getElementById('ubtn'); if(b) b.classList.toggle('alert', upgradeBadge); }
 // subtiel aftel-systeem rechtsboven: toon de eerstvolgende upgrade + hoeveel sterren nog
 function updateNextUp(){
   const el=document.getElementById('nextup'); if(!el) return;
@@ -419,17 +437,47 @@ function drawUFO(g,scale){
   for(const lx of [-42,-5,31]){ roundRect(g,lx,16,11,22,5); g.fill(); g.stroke(); }
   g.fillStyle='#A99BE8'; g.lineWidth=2.5;
   for(const f of [[-36,40],[0,44],[36,40]]){ g.beginPath(); g.arc(f[0],f[1],7.5,0,6.2832); g.fill(); g.stroke(); }
-  if(equip.wings){ g.fillStyle=ufoBody(); g.lineWidth=3;
-    g.beginPath(); g.moveTo(-58,6); g.quadraticCurveTo(-108,-4,-98,20); g.quadraticCurveTo(-94,32,-56,22); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(58,6); g.quadraticCurveTo(108,-4,98,20); g.quadraticCurveTo(94,32,56,22); g.closePath(); g.fill(); g.stroke(); }
+  if(equip.wings){ g.fillStyle=ufoBody(); g.lineWidth=3; drawWing(g,1,style.wings); drawWing(g,-1,style.wings); }
   g.fillStyle=C_PINK; g.lineWidth=3; ellipse(g,0,20,64,18); g.fill(); g.stroke();
-  g.fillStyle=C_DOME; g.lineWidth=3.5; ellipse(g,0,-14,40,34); g.fill(); g.stroke();
+  g.fillStyle=ufoDome(); g.lineWidth=3.5; ellipse(g,0,-14,40,34); g.fill(); g.stroke();
   g.fillStyle=ufoBody(); ellipse(g,0,6,72,27); g.fill(); g.stroke();
   g.strokeStyle='rgba(30,27,94,.5)'; g.lineWidth=2; g.beginPath(); g.moveTo(-66,2); g.quadraticCurveTo(0,22,66,2); g.stroke();
   g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.5;
   for(const p of [[-52,6],[52,2],[0,16]]){ g.beginPath(); g.arc(p[0],p[1],6,0,6.2832); g.fill(); g.stroke(); }
   g.fillStyle='rgba(226,246,250,.9)'; ellipse(g,-13,-26,14,8); g.fill();
   g.restore();
+}
+function drawWing(g,s,st){ // s=1 rechts, s=-1 links
+  g.save(); g.scale(s,1); g.beginPath();
+  if(st==='rond'){ g.ellipse(84,16,24,13,0,0,6.2832); g.fill(); g.stroke(); }
+  else if(st==='echt'){
+    g.moveTo(56,8);
+    g.quadraticCurveTo(86,0,112,8);
+    g.quadraticCurveTo(98,14,108,16);
+    g.quadraticCurveTo(90,20,98,23);
+    g.quadraticCurveTo(78,25,70,23);
+    g.quadraticCurveTo(60,21,56,20);
+    g.closePath(); g.fill(); g.stroke();
+    g.lineWidth=2; g.beginPath(); g.moveTo(60,12); g.quadraticCurveTo(84,12,104,11); g.stroke();
+  } else { // puntig (standaard)
+    g.moveTo(58,6); g.quadraticCurveTo(108,-4,98,20); g.quadraticCurveTo(94,32,56,22); g.closePath(); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+function drawExhaust(g,st,sp){ // getekend in UFO-ruimte, al geroteerd naar bewegingsrichting
+  const len=22+sp*0.05;
+  if(st==='bliksem'){
+    g.strokeStyle='rgba(120,200,255,.95)'; g.lineWidth=3.5; g.lineJoin='round'; g.lineCap='round';
+    g.beginPath(); g.moveTo(-30,18); g.lineTo(-44,12); g.lineTo(-40,20); g.lineTo(-58,15); g.lineTo(-50,24); g.lineTo(-66,21); g.stroke();
+    g.fillStyle='rgba(210,238,255,.85)'; g.beginPath(); g.ellipse(-40,18,8,6,0,0,6.2832); g.fill();
+  } else if(st==='regenboog'){
+    const cols=['#F58BB0','#FFD24A','#97C459','#5BA8E8','#C58BE8'];
+    for(let i=0;i<cols.length;i++){ g.fillStyle=hexA(cols[i],0.6); g.beginPath(); g.ellipse(-40-i*5,18,Math.max(3,len*0.5-i*2),Math.max(2,8-i),0,0,6.2832); g.fill(); }
+  } else { // vlam
+    g.fillStyle='rgba(255,90,30,.6)';  g.beginPath(); g.ellipse(-46,18,len,10,0,0,6.2832); g.fill();
+    g.fillStyle='rgba(255,170,40,.8)'; g.beginPath(); g.ellipse(-42,18,len*0.7,7,0,0,6.2832); g.fill();
+    g.fillStyle='rgba(255,235,160,.95)';g.beginPath(); g.ellipse(-38,18,len*0.4,4,0,0,6.2832); g.fill();
+  }
 }
 function drawBeamIcon(g,b,s){
   g.save(); g.translate(b.x,b.y); g.strokeStyle=C_NAVY; g.fillStyle=C_NAVY;
@@ -462,8 +510,13 @@ function render(){
   if(cur.blackhole.unlocked) drawBlackhole(cur.blackhole);
   if(cur.portal && arcadeAvail) drawPortal(cur.portal);
 
-  // trail
-  for(const tr of trail){ const a=tr.life/0.55; ctx.fillStyle='rgba(255,210,74,'+(a*0.8)+')'; star4(ctx,tr.x,tr.y,2+a*3); }
+  // trail (spoor) — type lijntjes / sterren / bollen
+  if(style.trail==='lijntjes'){ ctx.lineCap='round';
+    for(let i=1;i<trail.length;i++){ const a=trail[i].life/0.55; ctx.strokeStyle='rgba(255,210,74,'+(a*0.8)+')'; ctx.lineWidth=2+a*3;
+      ctx.beginPath(); ctx.moveTo(trail[i-1].x,trail[i-1].y); ctx.lineTo(trail[i].x,trail[i].y); ctx.stroke(); } }
+  else { for(const tr of trail){ const a=tr.life/0.55; ctx.fillStyle='rgba(255,210,74,'+(a*0.8)+')';
+      if(style.trail==='bollen'){ ctx.beginPath(); ctx.arc(tr.x,tr.y,2+a*3,0,6.2832); ctx.fill(); }
+      else star4(ctx,tr.x,tr.y,2+a*3); } }
 
   for(const b of cur.beams){
     const s=SUBJECTS[b.subject]; const op=b.played?0.32:1; const pulse=0.5+0.5*Math.sin(b.phase*2);
@@ -490,8 +543,9 @@ function render(){
   const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/curMaxV*0.4)); const sp=Math.hypot(ufo.vx,ufo.vy);
   if(equip.gold){ for(let i=3;i>=1;i--){ ctx.fillStyle='rgba(255,210,74,'+(0.06*i)+')'; ctx.beginPath(); ctx.arc(0,4,40+i*9,0,6.2832); ctx.fill(); } }
   if(sp>40){ const ang=Math.atan2(ufo.vy,ufo.vx); ctx.save(); ctx.rotate(ang);
-    ctx.fillStyle=equip.turbo?'rgba(255,150,40,.65)':'rgba(245,139,176,.5)';
-    ctx.beginPath(); ctx.ellipse(-46,18,(equip.turbo?22:16)+sp*0.04,9,0,0,6.2832); ctx.fill(); ctx.restore(); }
+    if(equip.turbo){ drawExhaust(ctx, style.turbo, sp); }
+    else { ctx.fillStyle='rgba(245,139,176,.5)'; ctx.beginPath(); ctx.ellipse(-46,18,16+sp*0.04,9,0,0,6.2832); ctx.fill(); }
+    ctx.restore(); }
   ctx.rotate(bank);
   if(!(ufo.invuln>0 && Math.floor(ufo.invuln*16)%2)) drawUFO(ctx,0.62);
   ctx.restore();
@@ -840,7 +894,7 @@ function updateGoalHud(){
 const upEl=document.getElementById('up'), upcard=document.getElementById('upcard');
 document.getElementById('ubtn').onclick=openUpgrades;
 document.getElementById('name').onclick=()=>{ if(mode==='hub' && !mg.classList.contains('show') && !upEl.classList.contains('show')) showStart(true); };
-function openUpgrades(){ paused=true; buildUpgradePanel(); upEl.classList.add('show'); }
+function openUpgrades(){ paused=true; upgradeBadge=false; updateUfoBtn(); buildUpgradePanel(); upEl.classList.add('show'); }
 function closeUpgrades(){ upEl.classList.remove('show'); paused=false; last=performance.now(); }
 function drawUfoPreview(){
   const c=document.getElementById('ufoprev'); if(!c) return; const g=c.getContext('2d');
@@ -855,27 +909,32 @@ function buildUpgradePanel(){
   for(const u of UPGRADES){
     const unlocked = points>=u.at;
     const lock = '<span class="badge lock">nog '+(u.at-points)+' ★</span>';
-    if(u.key==='color'){
+    if(u.type==='color'){
+      const curc = u.key==='color' ? ufo.color : ufo.dome;
+      const showSel = c => (curc===c && (u.key!=='color' || !equip.gold)) ? ' sel' : '';
       const inner = unlocked
-        ? '<div class="opt-name">Kleur</div><div class="swatches">'+PALETTE.map(c=>'<button class="sw'+(ufo.color===c && !equip.gold?' sel':'')+'" style="background:'+c+'" data-c="'+c+'"></button>').join('')+'</div>'
-        : '<div class="opt-name">Kleur</div><div class="opt-req">'+u.at+' ★ nodig om je kleur te kiezen</div>';
-      rows+='<div class="opt'+(unlocked?'':' locked')+'"><div class="opt-ic">🎨</div><div class="opt-info">'+inner+'</div><div class="opt-ctrl">'+(unlocked?'':lock)+'</div></div>';
+        ? '<div class="opt-name">'+u.name+'</div><div class="swatches">'+u.cols.map(c=>'<button class="sw'+showSel(c)+'" style="background:'+c+'" data-ck="'+u.key+'" data-c="'+c+'"></button>').join('')+'</div>'
+        : '<div class="opt-name">'+u.name+'</div><div class="opt-req">'+u.at+' ★ nodig</div>';
+      rows+='<div class="opt'+(unlocked?'':' locked')+'"><div class="opt-ic">'+u.icon+'</div><div class="opt-info">'+inner+'</div><div class="opt-ctrl">'+(unlocked?'':lock)+'</div></div>';
       continue;
     }
     const on=equip[u.key];
     const ctrl = unlocked ? '<button class="togglebtn'+(on?' on':'')+'" data-t="'+u.key+'">'+(on?'Aan':'Uit')+'</button>' : lock;
     const sub = unlocked ? u.desc : (u.at+' ★ nodig');
+    let chips='';
+    if(unlocked && on && u.styles){ chips='<div class="stylechips">'+u.styles.map(s=>'<button class="stylechip'+(style[u.key]===s.id?' sel':'')+'" data-sk="'+u.key+'" data-si="'+s.id+'">'+s.label+'</button>').join('')+'</div>'; }
     rows+='<div class="opt'+(unlocked?'':' locked')+'">'+
       '<div class="opt-ic">'+u.icon+'</div>'+
-      '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div></div>'+
+      '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div>'+chips+'</div>'+
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
   upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 Pas je UFO aan</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
     rows+
     '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';
-  upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ ufo.color=b.dataset.c; equip.gold=false; scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.stylechip').forEach(b=>b.onclick=()=>{ style[b.dataset.sk]=b.dataset.si; scheduleSave(); buildUpgradePanel(); });
   document.getElementById('upclose').onclick=closeUpgrades;
   drawUfoPreview();
 }
@@ -938,6 +997,7 @@ if(returning){ // herstel positie nabij blackhole/centrum van huidig stelsel
   cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
 }
 checkUpgrades(true); // pas eerder verdiende upgrades stil toe + vul het aftel-chipje
+upgradeBadge=false; updateUfoBtn();
 arcadeAvail = arcadeMilestones()>arcadeConsumed; arcadeAnnouncePending=false; updateArcadeChip();
 updateGoalHud();
 showStart(returning);
