@@ -249,7 +249,7 @@ function saveState(){
   if(wiping) return;
   try{
     const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
-      dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
+      dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played,score:b.score||0})), bh:d.blackhole.unlocked })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
 }
@@ -269,7 +269,8 @@ function applySave(data){
   if(Array.isArray(data.dims)){
     data.dims.forEach((sd,i)=>{ const d=dims[i]; if(!d) return;
       // beam-indeling komt altijd uit DIM_SPECS (1 per vak); herstel enkel 'gespeeld' per vak
-      if(Array.isArray(sd.beams)){ const ps=new Set(sd.beams.filter(b=>b.played).map(b=>b.subject)); d.beams.forEach(b=>{ b.played=ps.has(b.subject); }); }
+      if(Array.isArray(sd.beams)){ const bySub={}; sd.beams.forEach(b=>{ if(b.played) bySub[b.subject]=Math.max(bySub[b.subject]||0, b.score||0); });
+        d.beams.forEach(b=>{ if(b.subject in bySub){ b.played=true; b.score=bySub[b.subject]; } else { b.played=false; b.score=0; } }); }
       d.blackhole.unlocked = allPlayed(d); });
   }
   cur=dims[active];
@@ -290,7 +291,7 @@ const DIM_SPECS=[
 ];
 function buildDimension(spec){
   const d={ name:spec.name, bg:spec.bg, star:spec.star, w:spec.w, h:spec.h, rockTint:spec.rockTint, rockCrater:spec.rockCrater,
-    beams:spec.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false})),
+    beams:spec.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false,score:0})),
     blackhole:{x:spec.blackhole.x,y:spec.blackhole.y,target:spec.blackhole.target,r:44,cool:0,unlocked:false},
     portal:{x:spec.portal.x,y:spec.portal.y,r:48,cool:0,phase:Math.random()*6},
     rocks:[], layers:[] };
@@ -438,7 +439,7 @@ function update(dt){
   }
   for(const b of cur.beams){ if(b.cool>0)b.cool-=dt; b.phase+=dt; }
   const bh=cur.blackhole; if(bh.cool>0)bh.cool-=dt;
-  for(const b of cur.beams){ if(b.cool<=0 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
+  for(const b of cur.beams){ if(b.cool<=0 && b.score<10 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
   if(bh.unlocked && bh.cool<=0 && Math.hypot(ufo.x-bh.x,ufo.y-bh.y)<bh.r){ travel(bh.target); }
   const pt=cur.portal; if(pt && arcadeAvail){ pt.phase+=dt; if(pt.cool>0)pt.cool-=dt; else if(Math.hypot(ufo.x-pt.x,ufo.y-pt.y)<pt.r){ startArcade(); } }
 
@@ -451,7 +452,7 @@ function update(dt){
 
 function travel(target){
   active=target; cur=dims[active];
-  cur.beams.forEach(b=>{ b.played=false; b.cool=0; }); // nieuwe ruimte: alle vakken weer fris
+  cur.beams.forEach(b=>{ b.played=false; b.score=0; b.cool=0; }); // nieuwe ruimte: alle vakken weer fris
   cur.blackhole.unlocked=false; cur.blackhole.cool=3; starsHere=0;
   const bh=cur.blackhole; const ang=Math.random()*6.2832;
   ufo.x=Math.max(120,Math.min(cur.w-120,bh.x+Math.cos(ang)*220));
@@ -617,14 +618,17 @@ function render(){
       else star4(ctx,tr.x,tr.y,2+a*3); } }
 
   for(const b of cur.beams){
-    const s=SUBJECTS[b.subject]; const op=b.played?0.32:1; const pulse=0.5+0.5*Math.sin(b.phase*2);
+    const s=SUBJECTS[b.subject]; const perfect=b.score>=10; const op=perfect?0.3:(b.played?0.7:1); const pulse=0.5+0.5*Math.sin(b.phase*2);
     ctx.globalAlpha=op;
     ctx.fillStyle=hexA(s.color,0.14+pulse*0.05);
     ctx.beginPath(); ctx.moveTo(b.x-14,b.y-6); ctx.lineTo(b.x+14,b.y-6); ctx.lineTo(b.x+70,b.y+150); ctx.lineTo(b.x-70,b.y+150); ctx.closePath(); ctx.fill();
     ctx.fillStyle=hexA(s.color,0.30); ctx.beginPath(); ctx.arc(b.x,b.y,b.r*(1+pulse*0.12),0,6.2832); ctx.fill();
     ctx.fillStyle=s.core; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(b.x,b.y,b.r*0.42,0,6.2832); ctx.fill(); ctx.stroke();
     drawBeamIcon(ctx,b,s);
-    ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText(b.played?s.label+' ✓':s.label, b.x, b.y+b.r+6);
+    ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center';
+    const lbl = !b.played ? s.label : (perfect ? s.label+' ✓ 10/10' : s.label+' · '+b.score+'/10');
+    ctx.fillText(lbl, b.x, b.y+b.r+6);
+    if(b.played && !perfect){ ctx.fillStyle='#FFE7A0'; ctx.font='600 12px -apple-system,sans-serif'; ctx.fillText('↻ opnieuw', b.x, b.y+b.r+24); }
     ctx.globalAlpha=1;
   }
   for(const r of cur.rocks){
@@ -1208,14 +1212,20 @@ function answer(btn,val,correct){
 }
 function showResult(){
   const e=mgState.earned;
-  if(mgState.beam){ mgState.beam.played=true;
+  const wasPerfect = e>=10;
+  if(mgState.beam){ mgState.beam.played=true; mgState.beam.score=Math.max(mgState.beam.score||0, e);
     if(allPlayed(cur) && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Knap! Je speelde alle vakken — het zwarte gat is open. Vlieg erin naar een nieuwe ruimte!'); }
     updateVakkenHud(); updateGoalHud(); }
   scheduleSave();
+  const best = mgState.beam ? mgState.beam.score : e;
   const msg=e>=8?'Geweldig gedaan!':e>=5?'Goed bezig!':'Blijf oefenen!';
   const disp=e<=0?'☆':(e<=10?'★'.repeat(e):'★ × '+e);
+  const extra = wasPerfect
+    ? '<div class="mg-sub">Alles juist! Dit vak is <b>voltooid</b> 🏆</div>'
+    : '<div class="mg-sub">Je beste score: <b>'+best+'/10</b>. Vlieg opnieuw door de beam om je fouten te verbeteren!</div>';
   mgcard.innerHTML='<div class="stars-earned">'+disp+'</div><div class="mg-msg">'+msg+'</div>'+
     '<div class="mg-sub">Je verdiende <b>'+e+' sterren</b> ('+e+' van 10 goed).</div>'+
+    extra+
     '<button class="btn" id="mgdone">Verder vliegen</button>';
   document.getElementById('mgdone').onclick=closeMiniGame;
 }
@@ -1226,7 +1236,8 @@ function showComingSoon(){
     '<button class="btn" id="mgdone">Verder vliegen</button>';
   mg.classList.add('show'); document.getElementById('mgdone').onclick=closeMiniGame;
 }
-function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ playCelebration(); } else { resumeAfterOverlays(); } }
+function closeMiniGame(){ mg.classList.remove('show'); if(mgState&&mgState.beam) mgState.beam.cool=3; // even rust zodat een herspeelbare beam niet meteen heropent
+  if(pendingUp.length){ playCelebration(); } else { resumeAfterOverlays(); } }
 // na alle overlays: toon eventueel de "Extra Spel!"-aankondiging, anders hervat
 function resumeAfterOverlays(){
   if(arcadeAnnouncePending && arcadeAvail){ showExtraAnnounce(); return; }
