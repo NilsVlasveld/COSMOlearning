@@ -1141,33 +1141,38 @@ function genTellen(){
 // ===== LEZEN (begrijpend lezen) — niveau gekoppeld aan leerjaar + semester (AVI/CLIB) =====
 // lv1=LJ1 S1 (AVI Start/M3) · lv2=LJ1 S2 (AVI E3) · lv3=LJ2 S1 (AVI M4) · lv4=LJ2 S2 (AVI E4/AVI5) · lv5=LJ3+
 const LEES_Q=[
-  // lv1 — net leren lezen: 1 heel korte zin, letterlijk (woord/zin-niveau)
-  {lv:1, t:'De maan is rond.', q:'Hoe is de maan?', a:['Rond','Plat','Lang'], c:'Rond'},
-  {lv:1, t:'Tom heeft een rode bal.', q:'Welke kleur is de bal?', a:['Rood','Blauw','Geel'], c:'Rood'},
-  {lv:1, t:'De kat zit op de mat.', q:'Waar zit de kat?', a:['Op de mat','In de boom','Op het dak'], c:'Op de mat'},
-  {lv:1, t:'Saar eet een appel.', q:'Wat eet Saar?', a:['Een appel','Een koek','Een ei'], c:'Een appel'},
-  {lv:1, t:'De ster is geel.', q:'Welke kleur is de ster?', a:['Geel','Groen','Roze'], c:'Geel'},
-  // lv2 — LJ1 einde: 2 korte zinnen combineren, letterlijk
-  {lv:2, t:'Mila heeft een gele jas. Ze speelt buiten in de zon.', q:'Waar speelt Mila?', a:['Buiten','Binnen','In bad'], c:'Buiten'},
-  {lv:2, t:'De hond rent heel snel. Hij vangt de bal.', q:'Wat vangt de hond?', a:['De bal','De kat','De stok'], c:'De bal'},
-  {lv:2, t:'Sam vliegt met zijn raket. Hij gaat naar de maan.', q:'Waar gaat Sam naartoe?', a:['Naar de maan','Naar de zee','Naar school'], c:'Naar de maan'},
-  {lv:2, t:'Het is nacht. De sterren schijnen fel.', q:'Wanneer schijnen de sterren?', a:['s Nachts','s Morgens','s Middags'], c:'s Nachts'},
-  {lv:2, t:'Lena vindt twee groene stenen. Ze geeft er één aan Tom.', q:'Hoeveel stenen vindt Lena?', a:['Twee','Drie','Eén'], c:'Twee'},
-  // lv3 — LJ2 begin: kort verhaaltje (2-3 zinnen), wie/wat/waar/wanneer + volgorde
-  {lv:3, t:'Mila vliegt met haar UFO naar een verre planeet. Daar vindt ze drie blauwe stenen. Ze stopt ze voorzichtig in haar tas.', q:'Hoeveel stenen vindt Mila?', a:['Drie','Twee','Vier'], c:'Drie'},
-  {lv:3, t:'De kleine alien is jarig. Zijn vrienden brengen een grote taart mee. Samen blazen ze de kaarsjes uit.', q:'Waarom brengen de vrienden een taart?', a:['De alien is jarig','Ze hebben honger','Het is avond'], c:'De alien is jarig'},
-  {lv:3, t:'Tom speelt eerst met zijn robot. Daarna leest hij een boek over planeten. Dan gaat hij slapen.', q:'Wat doet Tom als eerste?', a:['Spelen met zijn robot','Een boek lezen','Slapen'], c:'Spelen met zijn robot'},
-  {lv:3, t:'Sara en Lou zoeken een nieuwe planeet. Ze vliegen voorbij de maan en de sterren. Eindelijk zien ze een groene planeet.', q:'Welke kleur heeft de planeet?', a:['Groen','Rood','Blauw'], c:'Groen'},
-  {lv:3, t:'Robin maakt zijn ruimteschip schoon. Eerst poetst hij de ramen. Daarna veegt hij de vloer.', q:'Wat doet Robin als tweede?', a:['De vloer vegen','De ramen poetsen','Slapen'], c:'De vloer vegen'},
+  // lv1 — net leren lezen: 1 heel korte zin, letterlijk (dieren, thuis, kleuren, eten)
+  {lv:1, t:'De hond rent in de tuin.', q:'Waar rent de hond?', a:['In de tuin','In het water','Op het dak'], c:'In de tuin'},
+  {lv:1, t:'Saar heeft een rode jas.', q:'Welke kleur is de jas?', a:['Rood','Blauw','Geel'], c:'Rood'},
+  {lv:1, t:'De kat drinkt melk.', q:'Wat drinkt de kat?', a:['Melk','Water','Sap'], c:'Melk'},
+  {lv:1, t:'Tom eet een appel.', q:'Wat eet Tom?', a:['Een appel','Een koek','Een ei'], c:'Een appel'},
+  {lv:1, t:'Mama leest een boek.', q:'Wat doet mama?', a:['Lezen','Slapen','Koken'], c:'Lezen'},
+  {lv:1, t:'De bal is groot en rond.', q:'Hoe is de bal?', a:['Rond','Plat','Vierkant'], c:'Rond'},
+  {lv:1, t:'Het is koud buiten.', q:'Hoe is het buiten?', a:['Koud','Warm','Nat'], c:'Koud'},
+  // lv2 — LJ1 einde: 2 korte zinnen combineren (school, dieren, weer, thuis)
+  {lv:2, t:'Lena heeft een nieuwe fiets. Ze rijdt ermee naar school.', q:'Waar rijdt Lena naartoe?', a:['Naar school','Naar de zee','Naar oma'], c:'Naar school'},
+  {lv:2, t:'De hond is moe. Hij ligt in zijn mand.', q:'Waar ligt de hond?', a:['In zijn mand','In de tuin','Op de stoel'], c:'In zijn mand'},
+  {lv:2, t:'Sam speelt buiten. Plots begint het te regenen.', q:'Wat gebeurt er?', a:['Het regent','Het sneeuwt','De zon schijnt'], c:'Het regent'},
+  {lv:2, t:'Oma bakt koekjes. Ze ruiken heel lekker.', q:'Wat bakt oma?', a:['Koekjes','Brood','Soep'], c:'Koekjes'},
+  {lv:2, t:'Mila vindt drie schelpen op het strand. Ze stopt ze in haar emmer.', q:'Hoeveel schelpen vindt Mila?', a:['Drie','Twee','Vijf'], c:'Drie'},
+  {lv:2, t:'De kat zit hoog in de boom. Ze durft niet naar beneden.', q:'Waar zit de kat?', a:['In de boom','In het huis','Onder de auto'], c:'In de boom'},
+  // lv3 — LJ2 begin: kort verhaaltje (2-3 zinnen), wie/wat/waar + volgorde
+  {lv:3, t:'Tom gaat met papa naar de winkel. Daar koopt hij een nieuw potlood en een gom. Daarna gaan ze samen naar huis.', q:'Wat koopt Tom in de winkel?', a:['Een potlood en een gom','Brood en melk','Een bal'], c:'Een potlood en een gom'},
+  {lv:3, t:'Eerst poetst Sara haar tanden. Daarna trekt ze haar pyjama aan. Dan kruipt ze in bed.', q:'Wat doet Sara als eerste?', a:['Haar tanden poetsen','In bed kruipen','Haar pyjama aantrekken'], c:'Haar tanden poetsen'},
+  {lv:3, t:'De boer geeft de koeien eten. Elke ochtend melkt hij ze. De melk gaat daarna naar de winkel.', q:'Wat doet de boer elke ochtend?', a:['De koeien melken','Voetballen','Slapen'], c:'De koeien melken'},
+  {lv:3, t:'Robin en Noor bouwen een hut in het bos. Ze gebruiken takken en grote bladeren. Als de hut klaar is, spelen ze erin.', q:'Waar bouwen ze een hut?', a:['In het bos','Op het strand','In de klas'], c:'In het bos'},
+  {lv:3, t:'Lena is jarig vandaag. Haar vriendjes komen op bezoek met cadeautjes. Samen eten ze taart.', q:'Waarom komen de vriendjes op bezoek?', a:['Lena is jarig','Het regent','Ze hebben honger'], c:'Lena is jarig'},
   // lv4 — LJ2 einde: korte tekst (3-4 zinnen), hoofdgedachte / waarom (oorzaak-gevolg) / conclusie
-  {lv:4, t:'Het regende hard op de rode planeet. Daarom bleef de kleine robot binnen in zijn ruimteschip. Hij speelde er met zijn bouwblokken tot de zon weer scheen.', q:'Waarom bleef de robot binnen?', a:['Omdat het regende','Omdat hij moe was','Omdat het nacht was'], c:'Omdat het regende'},
-  {lv:4, t:'Eerst trok de astronaut zijn ruimtepak aan. Daarna zette hij zijn helm op. Als laatste stapte hij voorzichtig in de grote raket.', q:'Wat deed de astronaut als laatste?', a:['In de raket stappen','Zijn helm opzetten','Zijn pak aantrekken'], c:'In de raket stappen'},
-  {lv:4, t:'Lena had honger na een lange ruimtereis. Ze maakte snel een boterham klaar en dronk een glas melk. Daarna voelde ze zich weer sterk.', q:'Waarom maakte Lena eten klaar?', a:['Ze had honger','Ze was jarig','Ze ging slapen'], c:'Ze had honger'},
-  {lv:4, t:'De drie vriendjes verzamelden samen sterren in de ruimte. Ze deelden alles eerlijk met elkaar. Daarom waren ze heel blij.', q:'Waar gaat dit verhaaltje vooral over?', a:['Vriendjes die delen','Een boze alien','Een kapotte raket'], c:'Vriendjes die delen'},
-  {lv:4, t:'Sam wou naar de verste planeet vliegen. Maar zijn raket had geen brandstof meer. Daarom kon hij niet vertrekken.', q:'Waarom kon Sam niet vertrekken?', a:['Geen brandstof','Het regende','Hij sliep'], c:'Geen brandstof'},
+  {lv:4, t:'Het regende de hele dag. Daarom konden de kinderen niet buiten spelen. Ze speelden gezelschapsspelletjes in de woonkamer.', q:'Waarom speelden de kinderen binnen?', a:['Omdat het regende','Omdat ze ziek waren','Omdat het nacht was'], c:'Omdat het regende'},
+  {lv:4, t:'Eerst deed papa de bloem en de suiker in een kom. Daarna voegde hij eieren en melk toe. Als laatste bakte hij de pannenkoeken.', q:'Wat deed papa als laatste?', a:['De pannenkoeken bakken','De eieren toevoegen','De bloem afwegen'], c:'De pannenkoeken bakken'},
+  {lv:4, t:'Mila had veel dorst na het sporten. Ze dronk snel een groot glas water. Daarna voelde ze zich weer fris.', q:'Waarom dronk Mila water?', a:['Ze had dorst','Ze was jarig','Ze ging slapen'], c:'Ze had dorst'},
+  {lv:4, t:'De drie vriendinnen hielpen elkaar met de moeilijke som. Samen vonden ze het juiste antwoord. Daardoor waren ze allemaal blij.', q:'Waar gaat dit verhaaltje vooral over?', a:['Vriendinnen die elkaar helpen','Een boze juf','Een kapotte fiets'], c:'Vriendinnen die elkaar helpen'},
+  {lv:4, t:'Sam wilde gaan zwemmen in de vijver. Maar het water was veel te koud. Daarom bleef hij liever op het droge.', q:'Waarom ging Sam niet zwemmen?', a:['Het water was te koud','Hij kon niet zwemmen','Het was donker'], c:'Het water was te koud'},
+  {lv:4, t:'De egel zocht een warme plek voor de winter. Hij maakte een nestje van droge bladeren onder de struik. Daar hield hij zijn winterslaap.', q:'Waarom maakte de egel een nestje?', a:['Voor zijn winterslaap','Om te spelen','Om te eten'], c:'Voor zijn winterslaap'},
   // lv5 — LJ3+: langere tekst, verband leggen / conclusie
-  {lv:5, t:'Toen Nora op de blauwe planeet landde, zag ze overal groene plantjes. De lucht rook fris en er stroomde helder water. Nora wist zeker dat hier leven mogelijk was.', q:'Waarom denkt Nora dat er leven mogelijk is?', a:['Er zijn planten en water','Het is er donker','Er liggen alleen stenen'], c:'Er zijn planten en water'},
-  {lv:5, t:'De ruimtewinkel was bijna leeg. Alle sterrenkaarten waren al verkocht, behalve één. Robin kocht die laatste kaart snel, voordat iemand anders het kon doen.', q:'Waarom kocht Robin de kaart snel?', a:['Het was de laatste','Ze was heel rijk','Ze had honger'], c:'Het was de laatste'}
+  {lv:5, t:'Toen Nora thuiskwam, lag er een grote plas water in de keuken. De kraan stond nog open en het water stroomde over de rand van de gootsteen. Snel draaide ze de kraan dicht.', q:'Waarom lag er water op de vloer?', a:['De kraan stond open','Het had geregend','De hond had gemorst'], c:'De kraan stond open'},
+  {lv:5, t:'In de klas was er nog maar één plekje vrij bij het raam. Iedereen wilde daar zitten, want je kon er de speelplaats zien. Robin was als eerste klaar en koos snel die plek.', q:'Waarom wilde iedereen bij het raam zitten?', a:['Je kon de speelplaats zien','Het was er warm','Er stond een computer'], c:'Je kon de speelplaats zien'},
+  {lv:5, t:'De marktkraam was bijna leeg. Alle aardbeien waren al verkocht, op één bakje na. Lena kocht dat laatste bakje snel, voordat iemand anders het kon nemen.', q:'Waarom kocht Lena snel?', a:['Het was het laatste bakje','Ze was heel rijk','Ze had honger'], c:'Het was het laatste bakje'}
 ];
 function leesTier(){
   if(level<=1) return semester===1 ? 1 : 2;   // LJ1 S1 / S2
