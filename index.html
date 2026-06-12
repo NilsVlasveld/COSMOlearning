@@ -561,13 +561,15 @@ function drawExhaust(g,st,sp){ // getekend in UFO-ruimte, al geroteerd naar bewe
     g.fillStyle='rgba(255,235,160,.95)';g.beginPath(); g.ellipse(-38,18,len*0.4,4,0,0,6.2832); g.fill();
   }
 }
-function drawScoreStar(g,x,y,score,perfect){
+function starPath(g,x,y,r){ g.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r*0.52:r, px=x+Math.cos(a)*rad, py=y+Math.sin(a)*rad; i?g.lineTo(px,py):g.moveTo(px,py); } g.closePath(); }
+function drawScoreStar(g,x,y,score,perfect,color){
   const r=18; g.save(); g.lineJoin='round';
-  g.fillStyle='#FFD24A'; g.strokeStyle=C_NAVY; g.lineWidth=1.6;
-  g.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r*0.52:r, px=x+Math.cos(a)*rad, py=y+Math.sin(a)*rad; i?g.lineTo(px,py):g.moveTo(px,py); } g.closePath(); g.fill(); g.stroke();
+  g.fillStyle=hexA(C_NAVY,0.4); starPath(g,x,y+2.5,r); g.fill();          // subtiele onderrand
+  g.fillStyle=color||'#FFD24A'; g.strokeStyle=C_NAVY; g.lineWidth=1.6;     // ster in vak-kleur
+  starPath(g,x,y,r); g.fill(); g.stroke();
   g.fillStyle=C_NAVY; g.font='800 '+(score>=10?13:17)+'px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
   g.fillText(String(score), x, y+1.5);
-  if(!perfect){ g.fillStyle='#FFE7A0'; g.font='700 14px -apple-system,sans-serif'; g.textBaseline='middle'; g.fillText('↻', x+r+9, y+2); }
+  if(!perfect){ g.fillStyle='#FFE7A0'; g.font='700 14px -apple-system,sans-serif'; g.fillText('↻', x+r+9, y+2); }
   g.restore();
 }
 function drawBeamIcon(g,b,s){
@@ -636,7 +638,7 @@ function render(){
     drawBeamIcon(ctx,b,s);
     ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
     ctx.fillText(s.label, b.x, b.y+b.r+6);
-    if(b.played){ drawScoreStar(ctx, b.x, b.y+b.r+30, b.score, perfect); }
+    if(b.played){ drawScoreStar(ctx, b.x, b.y+b.r+30, b.score, perfect, s.color); }
     ctx.globalAlpha=1;
   }
   for(const r of cur.rocks){
