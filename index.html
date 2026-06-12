@@ -23,12 +23,13 @@
   #pts { right:14px; display:flex; align-items:center; gap:7px;
     background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:15px; padding:7px 14px; border-radius:16px; }
   #pts .star { width:15px; height:15px; }
-  #name { left:14px; display:flex; align-items:center; gap:8px;
-    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:14px; padding:6px 13px; border-radius:16px;
-    pointer-events:auto; cursor:pointer; }
+  #topleft { left:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; max-width:calc(100vw - 28px); z-index:11; }
+  #topleft > * { pointer-events:auto; }
+  #name { display:flex; align-items:center; gap:8px;
+    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:14px; padding:6px 13px; border-radius:16px; cursor:pointer; }
   #name:active { transform:scale(.96); }
   #name .dot { width:16px; height:16px; border-radius:50%; background:#33C9C6; border:1.5px solid #fff; }
-  #ubtn { position:absolute; top:calc(max(14px,env(safe-area-inset-top)) + 36px); left:14px; z-index:11; pointer-events:auto;
+  #ubtn { position:relative;
     background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:13px; border:none;
     padding:7px 13px; border-radius:14px; cursor:pointer; }
   #ubtn:active{ transform:scale(.96); }
@@ -170,8 +171,8 @@
   .quitbtn:active { transform:scale(.92); }
 
   /* arcade-tussenspel: hub-HUD verbergen */
-  body.arcade #goal, body.arcade #hint, body.arcade #vakken, body.arcade #nextup, body.arcade #arcadenext, body.arcade #ubtn,
-  body.arcade #name, body.arcade #dimname { display:none !important; }
+  body.arcade #goal, body.arcade #hint, body.arcade #vakken, body.arcade #nextup, body.arcade #arcadenext,
+  body.arcade #topleft, body.arcade #dimname { display:none !important; }
 
   /* feestmoment bij nieuwe upgrade */
   #celebrate { z-index:30; }
@@ -193,7 +194,7 @@
 <body>
 <canvas id="game"></canvas>
 
-<div class="hud" id="name"><span class="dot"></span><span id="namelabel">Speler</span></div>
+<div class="hud" id="topleft"><div id="name"><span class="dot"></span><span id="namelabel">Speler</span></div><button id="ubtn">🛸 UFO garage</button></div>
 <div class="hud" id="pts">
   <svg class="star" viewBox="-8 -8 16 16"><path d="M0 -7 L1.6 -1.6 L7 0 L1.6 1.6 L0 7 L-1.6 1.6 L-7 0 L-1.6 -1.6 Z" fill="#FFD24A" stroke="#1E1B5E" stroke-width="1"/></svg>
   <span id="ptsval">0</span>
@@ -201,7 +202,6 @@
 <div class="hud" id="vakken"></div>
 <div class="hud" id="nextup"></div>
 <div class="hud" id="arcadenext"></div>
-<button id="ubtn">🛸 UFO garage</button>
 <div class="hud" id="dimname"></div>
 <div id="hint">Sleep om te vliegen — zoek de beams!</div>
 <div id="toast"></div>
