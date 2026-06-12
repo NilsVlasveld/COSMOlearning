@@ -233,11 +233,12 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   lezen:{color:'#5BA8E8',core:'#C2E1F8',label:'Lezen',icon:'book'},
   klok:{color:'#F2A65A',core:'#FFD9B0',label:'Klok',icon:'clock'},
   vormen:{color:'#C58BE8',core:'#E6CFF5',label:'Vormen',icon:'shapes'},
-  ruimte:{color:'#33C9C6',core:'#BEEDEB',label:'Ruimte',icon:'planet'},
+  ruimte:{color:'#33C9C6',core:'#BEEDEB',label:'Wereldoriëntatie',icon:'world'},
   geld:{color:'#6AD1A8',core:'#C6EFDD',label:'Geld',icon:'coin'},
-  tellen:{color:'#F58BB0',core:'#FAD0DF',label:'Tellen',icon:'count'} };
+  tellen:{color:'#F58BB0',core:'#FAD0DF',label:'Tellen',icon:'count'},
+  ruimtelijk:{color:'#F0916B',core:'#FBD3C2',label:'Ruimtelijk',icon:'compass'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','logica','klok','vormen','geld','tellen','ruimte','lezen'];
+const SUBJECT_ORDER=['rekenen','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -280,12 +281,12 @@ const DIM_SPECS=[
   { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
     beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
       {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
-      {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'} ],
+      {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'} ],
     blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:1500} },
   { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:20,
     beams:[ {x:520,y:1900,subject:'rekenen'},{x:2600,y:520,subject:'logica'},{x:2750,y:1550,subject:'klok'},
       {x:1700,y:380,subject:'vormen'},{x:2150,y:1950,subject:'geld'},{x:1300,y:2050,subject:'tellen'},
-      {x:900,y:1100,subject:'ruimte'},{x:2900,y:2150,subject:'lezen'} ],
+      {x:900,y:1100,subject:'ruimte'},{x:2900,y:2150,subject:'lezen'},{x:1150,y:1350,subject:'ruimtelijk'} ],
     blackhole:{x:1600,y:1200,target:0}, portal:{x:700,y:700} }
 ];
 function buildDimension(spec){
@@ -573,9 +574,16 @@ function drawBeamIcon(g,b,s){
     g.strokeRect(2,-3,9,9); }
   else if(s.icon==='planet'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,7,0,6.2832); g.stroke();
     g.save(); g.rotate(-0.5); g.beginPath(); g.ellipse(0,0,13,4.5,0,0,6.2832); g.stroke(); g.restore(); }
+  else if(s.icon==='world'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,10,0,6.2832); g.stroke();
+    g.beginPath(); g.moveTo(-10,0); g.lineTo(10,0); g.stroke();
+    g.beginPath(); g.ellipse(0,0,4,10,0,0,6.2832); g.stroke(); }
   else if(s.icon==='coin'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,9,0,6.2832); g.stroke();
     g.font='bold 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('€',0,1); }
   else if(s.icon==='count'){ g.font='bold 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('123',0,0); }
+  else if(s.icon==='compass'){ g.lineWidth=2.4; g.lineCap='round';
+    g.beginPath(); g.moveTo(0,-10); g.lineTo(0,10); g.moveTo(-10,0); g.lineTo(10,0); g.stroke();
+    g.beginPath(); g.moveTo(0,-10); g.lineTo(-3,-5); g.lineTo(3,-5); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(10,0); g.lineTo(5,-3); g.lineTo(5,3); g.closePath(); g.fill(); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -810,6 +818,14 @@ function openMiniGame(b){
 // moeilijkheidsgraad schaalt met gekozen leerjaar (level 1..6)
 function ri(a,b){ return Math.floor(rnd(a,b+1)); }   // willekeurig geheel getal a..b (incl.)
 function pick(a){ return a[Math.floor(rnd(0,a.length))]; }
+// kies een item maar vermijd de laatst gebruikte (meer variatie)
+let woRecent=[], leesRecent=[];
+function pickFresh(pool, recent, keep){
+  const avail=pool.filter(x=>!recent.includes(x));
+  const it=pick(avail.length?avail:pool);
+  recent.push(it); while(recent.length>keep) recent.shift();
+  return it;
+}
 
 // ===== LEERPLAN — rekenen per leerjaar & semester =====
 // Leerjaar 1
@@ -939,29 +955,80 @@ function genVormen(){
 }
 
 // ===== WERELDORIËNTATIE (ruimte, natuur, tijd) — d:1 begin, d:2 einde =====
+// 5 domeinen: Natuur · Tijd · Ruimte · Mens & Maatschappij · Techniek — lv = LJ1S1/LJ1S2/LJ2S1/LJ2S2
 const WO_Q=[
-  {d:1, q:'Wat zien we vooral overdag aan de hemel?', a:['De zon','De maan','Sterren'], c:'De zon'},
-  {d:1, q:'Op welke planeet wonen wij?', a:['De Aarde','Jupiter','Venus'], c:'De Aarde'},
-  {d:1, q:'Wat geeft ons licht en warmte?', a:['De zon','De maan','Een wolk'], c:'De zon'},
-  {d:1, q:'Welk seizoen komt na de lente?', a:['De zomer','De winter','De herfst'], c:'De zomer'},
-  {d:1, q:'In welk seizoen vallen de blaadjes?', a:['De herfst','De lente','De zomer'], c:'De herfst'},
-  {d:1, q:'In welk seizoen sneeuwt het vaak?', a:['De winter','De zomer','De lente'], c:'De winter'},
-  {d:1, q:'Hoeveel dagen heeft een week?', a:['7','5','10'], c:'7'},
-  {d:1, q:'Waar leeft een vis?', a:['In het water','In een boom','Onder de grond'], c:'In het water'},
-  {d:1, q:'Welk dier kan vliegen?', a:['Een vogel','Een vis','Een slang'], c:'Een vogel'},
-  {d:1, q:'Hoeveel poten heeft een hond?', a:['4','2','6'], c:'4'},
-  {d:1, q:'Welke vorm heeft de volle maan?', a:['Rond','Vierkant','Driehoek'], c:'Rond'},
-  {d:1, q:'Wat heb je nodig om te ademen?', a:['Lucht','Zand','Steen'], c:'Lucht'},
-  {d:2, q:'Welke planeet staat het dichtst bij de zon?', a:['Mercurius','De Aarde','Mars'], c:'Mercurius'},
-  {d:2, q:'Welke planeet noemen we de rode planeet?', a:['Mars','Saturnus','De Aarde'], c:'Mars'},
-  {d:2, q:'Welke planeet heeft grote ringen?', a:['Saturnus','Mercurius','Venus'], c:'Saturnus'},
-  {d:2, q:'Wat draait er rond de Aarde?', a:['De maan','De zon','Mars'], c:'De maan'},
-  {d:2, q:'Hoeveel poten heeft een spin?', a:['8','6','4'], c:'8'},
-  {d:2, q:'Hoeveel maanden heeft een jaar?', a:['12','10','7'], c:'12'},
-  {d:2, q:'Wat is het grootste: de zon of de Aarde?', a:['De zon','De Aarde','Even groot'], c:'De zon'},
-  {d:2, q:'Welk dier legt eieren?', a:['De kip','De koe','De hond'], c:'De kip'}
+  // lv1 — LJ1 begin: lichaam/zintuigen, bekende dieren, dag & nacht, gevoelens
+  {lv:1, q:'Waarmee ruik je?', a:['Met je neus','Met je oren','Met je voeten'], c:'Met je neus'},
+  {lv:1, q:'Waarmee hoor je?', a:['Met je oren','Met je ogen','Met je handen'], c:'Met je oren'},
+  {lv:1, q:'Waarmee zie je?', a:['Met je ogen','Met je neus','Met je mond'], c:'Met je ogen'},
+  {lv:1, q:'Welk dier zegt "miauw"?', a:['De kat','De hond','De koe'], c:'De kat'},
+  {lv:1, q:'Welk dier geeft ons melk?', a:['De koe','De kip','Het paard'], c:'De koe'},
+  {lv:1, q:'Wat zien we vooral overdag aan de hemel?', a:['De zon','De maan','Sterren'], c:'De zon'},
+  {lv:1, q:'Wat zien we vooral s nachts aan de hemel?', a:['De maan','De zon','Een vlieger'], c:'De maan'},
+  {lv:1, q:'Wat doe je s nachts meestal?', a:['Slapen','Zwemmen','Voetballen'], c:'Slapen'},
+  {lv:1, q:'Welke kleur heeft gras meestal?', a:['Groen','Blauw','Rood'], c:'Groen'},
+  {lv:1, q:'Hoeveel ogen heb jij?', a:['2','1','3'], c:'2'},
+  {lv:1, q:'Wat drink je als je dorst hebt?', a:['Water','Zand','Lucht'], c:'Water'},
+  {lv:1, q:'Wat is het tegenovergestelde van dag?', a:['Nacht','Avond','Ochtend'], c:'Nacht'},
+  {lv:1, q:'Hoe voel je je als je een cadeau krijgt?', a:['Blij','Boos','Bang'], c:'Blij'},
+  {lv:1, q:'Waar woont een vogel meestal?', a:['In een nest','In het water','Onder de grond'], c:'In een nest'},
+  {lv:1, q:'Welke vorm heeft de volle maan?', a:['Rond','Vierkant','Driehoek'], c:'Rond'},
+  // lv2 — LJ1 einde: dagen/seizoenen, dieren+eten/jongen, weer, beroepen, verkeer
+  {lv:2, q:'Hoeveel dagen heeft een week?', a:['7','5','10'], c:'7'},
+  {lv:2, q:'Welk seizoen komt na de winter?', a:['De lente','De herfst','De zomer'], c:'De lente'},
+  {lv:2, q:'In welk seizoen vallen de blaadjes van de bomen?', a:['De herfst','De lente','De zomer'], c:'De herfst'},
+  {lv:2, q:'In welk seizoen sneeuwt het vaak?', a:['De winter','De zomer','De lente'], c:'De winter'},
+  {lv:2, q:'Wat eet een konijn graag?', a:['Wortels','Vlees','Stenen'], c:'Wortels'},
+  {lv:2, q:'Wat hebben planten nodig om te groeien?', a:['Water en zon','Snoep','Lawaai'], c:'Water en zon'},
+  {lv:2, q:'Wie bakt ons brood?', a:['De bakker','De dokter','De politie'], c:'De bakker'},
+  {lv:2, q:'Wat doe je bij een rood verkeerslicht?', a:['Stoppen','Doorgaan','Springen'], c:'Stoppen'},
+  {lv:2, q:'Welk dier kan vliegen?', a:['Een vogel','Een vis','Een slang'], c:'Een vogel'},
+  {lv:2, q:'Waar leeft een vis?', a:['In het water','In een boom','Onder de grond'], c:'In het water'},
+  {lv:2, q:'Hoe heet het jong van een hond?', a:['Een puppy','Een veulen','Een kuiken'], c:'Een puppy'},
+  {lv:2, q:'Op welke planeet wonen wij?', a:['De Aarde','Jupiter','Venus'], c:'De Aarde'},
+  {lv:2, q:'Wat is het tegenovergestelde van warm?', a:['Koud','Nat','Zacht'], c:'Koud'},
+  {lv:2, q:'Welk dier heeft een lange nek?', a:['De giraf','De muis','De kikker'], c:'De giraf'},
+  {lv:2, q:'Wat maakt een bij?', a:['Honing','Melk','Boter'], c:'Honing'},
+  // lv3 — LJ2 begin: leefomgeving, plantdelen, gezond eten, maanden, gemeente, gereedschap, materialen
+  {lv:3, q:'Waar leeft een koe meestal?', a:['Op de boerderij','In de zee','In de woestijn'], c:'Op de boerderij'},
+  {lv:3, q:'Welk deel van een plant zit onder de grond?', a:['De wortels','De bloem','De bladeren'], c:'De wortels'},
+  {lv:3, q:'Wat is gezond om vaak te eten?', a:['Fruit','Snoep','Frietjes'], c:'Fruit'},
+  {lv:3, q:'Hoeveel maanden heeft een jaar?', a:['12','10','7'], c:'12'},
+  {lv:3, q:'Welke maand komt na december?', a:['Januari','November','Juni'], c:'Januari'},
+  {lv:3, q:'Wie blust een brand?', a:['De brandweer','De bakker','De postbode'], c:'De brandweer'},
+  {lv:3, q:'Welk gereedschap gebruikt een timmerman?', a:['Een hamer','Een lepel','Een borstel'], c:'Een hamer'},
+  {lv:3, q:'Waarmee vind je de weg in een stad?', a:['Een plattegrond','Een lepel','Een ballon'], c:'Een plattegrond'},
+  {lv:3, q:'Wat is groter: een dorp of een stad?', a:['Een stad','Een dorp','Even groot'], c:'Een stad'},
+  {lv:3, q:'Welk dier legt eieren?', a:['De kip','De koe','De hond'], c:'De kip'},
+  {lv:3, q:'Wat eet een koe?', a:['Gras','Vlees','Vissen'], c:'Gras'},
+  {lv:3, q:'Hoeveel poten heeft een spin?', a:['8','6','4'], c:'8'},
+  {lv:3, q:'Waarmee poets je je tanden?', a:['Een tandenborstel','Een vork','Een spons'], c:'Een tandenborstel'},
+  {lv:3, q:'Van welk materiaal is een raam meestal?', a:['Glas','Hout','Wol'], c:'Glas'},
+  {lv:3, q:'In welk seizoen bloeien veel bloemen?', a:['De lente','De winter','De herfst'], c:'De lente'},
+  // lv4 — LJ2 einde: levenscyclus, sorteren, drijven/zinken, wereldbol, windrichtingen, machines, heelal
+  {lv:4, q:'Waarin verandert een rups?', a:['In een vlinder','In een bij','In een vogel'], c:'In een vlinder'},
+  {lv:4, q:'Wat groeit uit een zaadje?', a:['Een plant','Een steen','Een wolk'], c:'Een plant'},
+  {lv:4, q:'Wat blijft drijven op water?', a:['Hout','Een steen','Een spijker'], c:'Hout'},
+  {lv:4, q:'Wat zinkt in water?', a:['Een steen','Een blad','Een kurk'], c:'Een steen'},
+  {lv:4, q:'In welke richting komt de zon op?', a:['In het oosten','In het westen','In het noorden'], c:'In het oosten'},
+  {lv:4, q:'Hoeveel hoofdwindrichtingen zijn er?', a:['4','2','8'], c:'4'},
+  {lv:4, q:'Waar is het meeste van op de aarde?', a:['Water','Land','Zand'], c:'Water'},
+  {lv:4, q:'Hoeveel uren heeft een dag?', a:['24','12','60'], c:'24'},
+  {lv:4, q:'Hoeveel seizoenen zijn er?', a:['4','2','6'], c:'4'},
+  {lv:4, q:'Welke planeet noemen we de rode planeet?', a:['Mars','Saturnus','De Aarde'], c:'Mars'},
+  {lv:4, q:'Welke planeet heeft grote ringen?', a:['Saturnus','Mercurius','Venus'], c:'Saturnus'},
+  {lv:4, q:'Hoeveel planeten draaien rond onze zon?', a:['8','9','7'], c:'8'},
+  {lv:4, q:'Welk dier houdt een winterslaap?', a:['De beer','De koe','De kip'], c:'De beer'},
+  {lv:4, q:'Waarmee ademen vissen onder water?', a:['Met kieuwen','Met longen','Met hun staart'], c:'Met kieuwen'},
+  {lv:4, q:'Wat noemen we bevroren water?', a:['IJs','Stoom','Modder'], c:'IJs'},
+  {lv:4, q:'Welk dier is het grootste op aarde?', a:['De blauwe vinvis','De olifant','De giraf'], c:'De blauwe vinvis'},
+  {lv:4, q:'Wat helpt om zware dingen te laten rollen?', a:['Een wiel','Een doos','Een touw'], c:'Een wiel'}
 ];
-function genRuimte(){ const pool = semester===2 ? WO_Q : WO_Q.filter(x=>x.d===1); const it=pick(pool.length?pool:WO_Q);
+function woTier(){ if(level<=1) return semester===1?1:2; if(level===2) return semester===1?3:4; return 4; }
+function genRuimte(){ const tier=woTier();
+  const allowed=[tier]; if(tier<4 && Math.random()<0.25) allowed.push(tier+1); // soms één niveau moeilijker
+  let pool=WO_Q.filter(x=>allowed.includes(x.lv)); if(pool.length<3) pool=WO_Q.filter(x=>x.lv<=tier);
+  const it=pickFresh(pool.length?pool:WO_Q, woRecent, Math.min((pool.length||3)-1,8));
   return { prompt:it.q, seq:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
 
 // ===== GELD (munten tellen) =====
@@ -1002,22 +1069,113 @@ function genTellen(){
   return { prompt:'Hoeveel sterren zie je?', draw:(g,w,h)=>drawCountItems(g,w,h,n), options:[...opts].sort(()=>Math.random()-0.5), correct:String(n), wide:false };
 }
 
-// ===== LEZEN (begrijpend lezen) — d:1 begin, d:2 einde =====
+// ===== LEZEN (begrijpend lezen) — niveau gekoppeld aan leerjaar + semester (AVI/CLIB) =====
+// lv1=LJ1 S1 (AVI Start/M3) · lv2=LJ1 S2 (AVI E3) · lv3=LJ2 S1 (AVI M4) · lv4=LJ2 S2 (AVI E4/AVI5) · lv5=LJ3+
 const LEES_Q=[
-  {d:1, t:'De gele raket vliegt naar de maan.', q:'Waar vliegt de raket naartoe?', a:['Naar de maan','Naar de zon','Naar de zee'], c:'Naar de maan'},
-  {d:1, t:'Mila ziet drie sterren aan de hemel.', q:'Hoeveel sterren ziet Mila?', a:['Drie','Twee','Vijf'], c:'Drie'},
-  {d:1, t:'De kleine alien is groen en blij.', q:'Welke kleur heeft de alien?', a:['Groen','Blauw','Rood'], c:'Groen'},
-  {d:1, t:'Tom eet een rode appel in zijn UFO.', q:'Wat eet Tom?', a:['Een appel','Een koek','Een banaan'], c:'Een appel'},
-  {d:1, t:'De ster is heel warm en geel.', q:'Hoe voelt de ster?', a:['Warm','Koud','Nat'], c:'Warm'},
-  {d:1, t:'De maan schijnt in de nacht.', q:'Wanneer schijnt de maan?', a:['In de nacht','Overdag','In de zomer'], c:'In de nacht'},
-  {d:2, t:'Sara vliegt met haar blauwe UFO voorbij een grote planeet met ringen.', q:'Welke kleur heeft de UFO van Sara?', a:['Blauw','Groen','Geel'], c:'Blauw'},
-  {d:2, t:'De astronaut verzamelt vijf gele stenen op een rode planeet.', q:'Hoeveel stenen verzamelt hij?', a:['Vijf','Drie','Tien'], c:'Vijf'},
-  {d:2, t:'Omdat het regende op de planeet, bleef de robot binnen in zijn schip.', q:'Waarom bleef de robot binnen?', a:['Het regende','Hij was moe','Het was nacht'], c:'Het regende'},
-  {d:2, t:'Eerst at de alien een koek, daarna dronk hij melk.', q:'Wat deed de alien als laatste?', a:['Melk drinken','Een koek eten','Slapen'], c:'Melk drinken'},
-  {d:2, t:'De drie vriendjes zoeken samen een nieuw sterrenstelsel om in te spelen.', q:'Wat zoeken de vriendjes?', a:['Een sterrenstelsel','Een planeet','Een maan'], c:'Een sterrenstelsel'}
+  // lv1 — net leren lezen: 1 heel korte zin, letterlijk (woord/zin-niveau)
+  {lv:1, t:'De maan is rond.', q:'Hoe is de maan?', a:['Rond','Plat','Lang'], c:'Rond'},
+  {lv:1, t:'Tom heeft een rode bal.', q:'Welke kleur is de bal?', a:['Rood','Blauw','Geel'], c:'Rood'},
+  {lv:1, t:'De kat zit op de mat.', q:'Waar zit de kat?', a:['Op de mat','In de boom','Op het dak'], c:'Op de mat'},
+  {lv:1, t:'Saar eet een appel.', q:'Wat eet Saar?', a:['Een appel','Een koek','Een ei'], c:'Een appel'},
+  {lv:1, t:'De ster is geel.', q:'Welke kleur is de ster?', a:['Geel','Groen','Roze'], c:'Geel'},
+  // lv2 — LJ1 einde: 2 korte zinnen combineren, letterlijk
+  {lv:2, t:'Mila heeft een gele jas. Ze speelt buiten in de zon.', q:'Waar speelt Mila?', a:['Buiten','Binnen','In bad'], c:'Buiten'},
+  {lv:2, t:'De hond rent heel snel. Hij vangt de bal.', q:'Wat vangt de hond?', a:['De bal','De kat','De stok'], c:'De bal'},
+  {lv:2, t:'Sam vliegt met zijn raket. Hij gaat naar de maan.', q:'Waar gaat Sam naartoe?', a:['Naar de maan','Naar de zee','Naar school'], c:'Naar de maan'},
+  {lv:2, t:'Het is nacht. De sterren schijnen fel.', q:'Wanneer schijnen de sterren?', a:['s Nachts','s Morgens','s Middags'], c:'s Nachts'},
+  {lv:2, t:'Lena vindt twee groene stenen. Ze geeft er één aan Tom.', q:'Hoeveel stenen vindt Lena?', a:['Twee','Drie','Eén'], c:'Twee'},
+  // lv3 — LJ2 begin: kort verhaaltje (2-3 zinnen), wie/wat/waar/wanneer + volgorde
+  {lv:3, t:'Mila vliegt met haar UFO naar een verre planeet. Daar vindt ze drie blauwe stenen. Ze stopt ze voorzichtig in haar tas.', q:'Hoeveel stenen vindt Mila?', a:['Drie','Twee','Vier'], c:'Drie'},
+  {lv:3, t:'De kleine alien is jarig. Zijn vrienden brengen een grote taart mee. Samen blazen ze de kaarsjes uit.', q:'Waarom brengen de vrienden een taart?', a:['De alien is jarig','Ze hebben honger','Het is avond'], c:'De alien is jarig'},
+  {lv:3, t:'Tom speelt eerst met zijn robot. Daarna leest hij een boek over planeten. Dan gaat hij slapen.', q:'Wat doet Tom als eerste?', a:['Spelen met zijn robot','Een boek lezen','Slapen'], c:'Spelen met zijn robot'},
+  {lv:3, t:'Sara en Lou zoeken een nieuwe planeet. Ze vliegen voorbij de maan en de sterren. Eindelijk zien ze een groene planeet.', q:'Welke kleur heeft de planeet?', a:['Groen','Rood','Blauw'], c:'Groen'},
+  {lv:3, t:'Robin maakt zijn ruimteschip schoon. Eerst poetst hij de ramen. Daarna veegt hij de vloer.', q:'Wat doet Robin als tweede?', a:['De vloer vegen','De ramen poetsen','Slapen'], c:'De vloer vegen'},
+  // lv4 — LJ2 einde: korte tekst (3-4 zinnen), hoofdgedachte / waarom (oorzaak-gevolg) / conclusie
+  {lv:4, t:'Het regende hard op de rode planeet. Daarom bleef de kleine robot binnen in zijn ruimteschip. Hij speelde er met zijn bouwblokken tot de zon weer scheen.', q:'Waarom bleef de robot binnen?', a:['Omdat het regende','Omdat hij moe was','Omdat het nacht was'], c:'Omdat het regende'},
+  {lv:4, t:'Eerst trok de astronaut zijn ruimtepak aan. Daarna zette hij zijn helm op. Als laatste stapte hij voorzichtig in de grote raket.', q:'Wat deed de astronaut als laatste?', a:['In de raket stappen','Zijn helm opzetten','Zijn pak aantrekken'], c:'In de raket stappen'},
+  {lv:4, t:'Lena had honger na een lange ruimtereis. Ze maakte snel een boterham klaar en dronk een glas melk. Daarna voelde ze zich weer sterk.', q:'Waarom maakte Lena eten klaar?', a:['Ze had honger','Ze was jarig','Ze ging slapen'], c:'Ze had honger'},
+  {lv:4, t:'De drie vriendjes verzamelden samen sterren in de ruimte. Ze deelden alles eerlijk met elkaar. Daarom waren ze heel blij.', q:'Waar gaat dit verhaaltje vooral over?', a:['Vriendjes die delen','Een boze alien','Een kapotte raket'], c:'Vriendjes die delen'},
+  {lv:4, t:'Sam wou naar de verste planeet vliegen. Maar zijn raket had geen brandstof meer. Daarom kon hij niet vertrekken.', q:'Waarom kon Sam niet vertrekken?', a:['Geen brandstof','Het regende','Hij sliep'], c:'Geen brandstof'},
+  // lv5 — LJ3+: langere tekst, verband leggen / conclusie
+  {lv:5, t:'Toen Nora op de blauwe planeet landde, zag ze overal groene plantjes. De lucht rook fris en er stroomde helder water. Nora wist zeker dat hier leven mogelijk was.', q:'Waarom denkt Nora dat er leven mogelijk is?', a:['Er zijn planten en water','Het is er donker','Er liggen alleen stenen'], c:'Er zijn planten en water'},
+  {lv:5, t:'De ruimtewinkel was bijna leeg. Alle sterrenkaarten waren al verkocht, behalve één. Robin kocht die laatste kaart snel, voordat iemand anders het kon doen.', q:'Waarom kocht Robin de kaart snel?', a:['Het was de laatste','Ze was heel rijk','Ze had honger'], c:'Het was de laatste'}
 ];
-function genLezen(){ const pool = semester===2 ? LEES_Q : LEES_Q.filter(x=>x.d===1); const it=pick(pool.length?pool:LEES_Q);
+function leesTier(){
+  if(level<=1) return semester===1 ? 1 : 2;   // LJ1 S1 / S2
+  if(level===2) return semester===1 ? 3 : 4;   // LJ2 S1 / S2
+  return 5;                                    // LJ3+
+}
+function genLezen(){ const tier=leesTier();
+  const allowed=[tier];
+  if(tier<5 && Math.random()<0.25) allowed.push(tier+1); // soms één niveau moeilijker (bv. LJ2·S1-verhaaltje bij LJ1·S2)
+  let pool=LEES_Q.filter(x=>allowed.includes(x.lv)); if(pool.length<2) pool=LEES_Q.filter(x=>x.lv<=tier);
+  const it=pickFresh(pool.length?pool:LEES_Q, leesRecent, Math.min((pool.length||3)-1,6));
   return { prompt:'<div class="lees-text">'+it.t+'</div><div class="lees-q">'+it.q+'</div>', seq:true, lees:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
+
+// ===== RUIMTELIJK INZICHT (meetkunde: positie, richting, rooster, blokken) =====
+function ruimtelijkTier(){ if(level<=1) return semester===1?1:2; if(level===2) return semester===1?3:4; return 4; }
+const POS_LABEL={op:'Op de doos',onder:'Onder de doos',naast:'Naast de doos',links:'Links van de doos',rechts:'Rechts van de doos'};
+function drawPositie(g,w,h,pos){
+  const cx=w/2, cy=h/2, bw=56, bh=44, r=15; g.lineJoin='round';
+  g.fillStyle='#C58BE8'; g.strokeStyle=C_NAVY; g.lineWidth=4; roundRect(g,cx-bw/2,cy-bh/2,bw,bh,8); g.fill(); g.stroke();
+  g.lineWidth=2.5; g.beginPath(); g.moveTo(cx-bw/2,cy-bh/2+10); g.lineTo(cx+bw/2,cy-bh/2+10); g.stroke();
+  let bx=cx,by=cy;
+  if(pos==='op') by=cy-bh/2-r-2; else if(pos==='onder') by=cy+bh/2+r+2;
+  else if(pos==='links') bx=cx-bw/2-r-10; else { bx=cx+bw/2+r+10; } // rechts/naast
+  g.fillStyle='#FFD24A'; g.strokeStyle=C_NAVY; g.lineWidth=3.5; g.beginPath(); g.arc(bx,by,r,0,6.2832); g.fill(); g.stroke();
+}
+function genPositie(tier){
+  const cands = tier<=1 ? ['op','onder','naast'] : ['op','onder','links','rechts'];
+  const pos=pick(cands); const opts=new Set([pos]); while(opts.size<3) opts.add(pick(cands));
+  return { prompt:'Waar staat de bal?', draw:(g,w,h)=>drawPositie(g,w,h,pos),
+    options:[...opts].map(p=>POS_LABEL[p]).sort(()=>Math.random()-0.5), correct:POS_LABEL[pos], wide:true };
+}
+function drawRow(g,w,h,n,idx){ const r=14, gap=12, tot=n*(r*2)+(n-1)*gap, x0=(w-tot)/2+r, y=h/2;
+  for(let i=0;i<n;i++){ g.fillStyle = i===idx?'#FFD24A':'#C7CBE0'; star4(g,x0+i*(r*2+gap),y,r); } }
+function genVolgorde(tier){
+  const n=tier<=2?4:5, idx=ri(0,n-1); const ORD=['eerste','tweede','derde','vierde','vijfde'];
+  const correct=idx===n-1?'laatste':ORD[idx];
+  const opts=new Set([correct]); const all=ORD.slice(0,n).concat('laatste');
+  while(opts.size<3) opts.add(pick(all));
+  return { prompt:'De hoeveelste ster is geel?', draw:(g,w,h)=>drawRow(g,w,h,n,idx),
+    options:[...opts].sort(()=>Math.random()-0.5), correct, wide:true };
+}
+function drawGrid(g,w,h,size,sr,sc){
+  const cell=Math.min(w,h)/(size+0.5), gw=cell*size, x0=(w-gw)/2, y0=(h-gw)/2;
+  g.fillStyle='rgba(255,255,255,.55)'; g.strokeStyle=C_NAVY; g.lineWidth=3; roundRect(g,x0,y0,gw,gw,8); g.fill(); g.stroke();
+  g.lineWidth=2; for(let i=1;i<size;i++){ g.beginPath(); g.moveTo(x0+i*cell,y0); g.lineTo(x0+i*cell,y0+gw); g.moveTo(x0,y0+i*cell); g.lineTo(x0+gw,y0+i*cell); g.stroke(); }
+  g.fillStyle='#FFD24A'; star4(g, x0+sc*cell+cell/2, y0+sr*cell+cell/2, cell*0.3);
+}
+function genRooster(tier,both){
+  const size=tier<=3?3:4, sr=ri(0,size-1), sc=ri(0,size-1);
+  if(both){ const correct='rij '+(sr+1)+', kolom '+(sc+1); const opts=new Set([correct]);
+    while(opts.size<3) opts.add('rij '+ri(1,size)+', kolom '+ri(1,size));
+    return { prompt:'In welk vakje staat de ster?', draw:(g,w,h)=>drawGrid(g,w,h,size,sr,sc), options:[...opts].sort(()=>Math.random()-0.5), correct, wide:true }; }
+  const askRij=Math.random()<0.5, val=(askRij?sr:sc)+1, correct=(askRij?'rij ':'kolom ')+val;
+  const opts=new Set([correct]); while(opts.size<3) opts.add((askRij?'rij ':'kolom ')+ri(1,size));
+  return { prompt:'In welke '+(askRij?'rij':'kolom')+' staat de ster?', draw:(g,w,h)=>drawGrid(g,w,h,size,sr,sc), options:[...opts].sort(()=>Math.random()-0.5), correct, wide:true };
+}
+function drawBlocks(g,w,h,heights){ const s=26, gap=4, cols=heights.length, tot=cols*s+(cols-1)*gap;
+  const x0=(w-tot)/2, baseY=h/2+(Math.max(...heights)*s)/2;
+  heights.forEach((hh,ci)=>{ for(let r=0;r<hh;r++){ const x=x0+ci*(s+gap), y=baseY-(r+1)*s;
+    g.fillStyle='#6AD1A8'; g.strokeStyle=C_NAVY; g.lineWidth=2.5; g.lineJoin='round'; roundRect(g,x,y,s,s,5); g.fill(); g.stroke(); } }); }
+function genBlokken(){ const cols=ri(2,3), heights=[]; for(let i=0;i<cols;i++) heights.push(ri(1,3));
+  if(Math.max(...heights)<2) heights[ri(0,cols-1)]=ri(2,3); // zorg voor minstens één stapeltje
+  let n=heights.reduce((a,b)=>a+b,0);
+  const opts=new Set([String(n)]); let t=0; while(opts.size<3&&t<30){ t++; const d=n+ri(-2,2); if(d>=1&&d!==n) opts.add(String(d)); }
+  while(opts.size<3) opts.add(String(n+opts.size));
+  return { prompt:'Hoeveel blokken zie je?', draw:(g,w,h)=>drawBlocks(g,w,h,heights), options:[...opts].sort(()=>Math.random()-0.5), correct:String(n), wide:false };
+}
+function genRuimtelijk(){
+  const tier=ruimtelijkTier();
+  const types = tier===1?['pos'] : tier===2?['pos','volgorde'] : tier===3?['volgorde','rooster','pos'] : ['rooster2','blokken','rooster','volgorde'];
+  const t=pick(types);
+  if(t==='pos') return genPositie(tier);
+  if(t==='volgorde') return genVolgorde(tier);
+  if(t==='rooster') return genRooster(tier,false);
+  if(t==='rooster2') return genRooster(tier,true);
+  return genBlokken();
+}
 
 function makeQuestion(subject){
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
@@ -1027,6 +1185,7 @@ function makeQuestion(subject){
   if(subject==='geld') return genGeld();
   if(subject==='tellen') return genTellen();
   if(subject==='ruimte') return genRuimte();
+  if(subject==='ruimtelijk') return genRuimtelijk();
   if(subject==='lezen') return genLezen();
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }

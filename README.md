@@ -9,7 +9,7 @@ Gebaseerd op het analysedocument (fase 0/1 — POC/MVP). Mobile-first, **touch**
 
 ## Wat zit erin
 - 🛸 Bestuurbare UFO (sleep-joystick), rondzwevende rotsen, zacht terugkaatsen (geen straf)
-- 🟡 **8 vakken**, 1 beam per vak per ruimte: **Rekenen**, **Logica**, **Klok** (analoge klok), **Vormen** (meetkunde), **Geld** (munten tellen), **Tellen** (hoeveelheden), **Ruimte** (wereldoriëntatie), **Lezen** (begrijpend lezen) — 10 vragen, 1 ster per juist antwoord. Elk vak heeft een **begin/einde-van-'t-jaar**-split. Vakken-teller (X/8) toont de voortgang; alle vakken spelen opent het zwarte gat
+- 🟡 **9 vakken**, 1 beam per vak per ruimte: **Rekenen**, **Logica**, **Klok** (analoge klok), **Vormen** (meetkunde), **Geld** (munten tellen), **Tellen** (hoeveelheden), **Ruimtelijk inzicht** (positie/links-rechts/rooster/blokken), **Wereldoriëntatie** (natuur/tijd/ruimte/mens & maatschappij/techniek), **Lezen** (begrijpend lezen, AVI/CLIB-niveaus) — 10 vragen, 1 ster per juist antwoord. Elk vak heeft een **begin/einde-van-'t-jaar**-split. Vakken-teller (X/9) toont de voortgang; alle vakken spelen opent het zwarte gat
 - ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (70/100/125/175/200/250 ★) met aftel-chipje + feestmoment
 - 🛸 **"UFO garage"**: apart scherm met live UFO-preview. **Kies je UFO-model** — Klassiek (start), Ring (100 ★), Racer (200 ★), Kristal (300 ★); een nieuw model toont na een spel de melding *"Nieuwe UFO!"*. Pas per optie het **type** aan: kleur · spoor (lijntjes/sterren/bollen) · vleugels (rond/puntig/echt) · koepelkleur · turbo (vlam/bliksem/regenboog) · gouden UFO. Vergrendelde opties tonen hoeveel sterren je nog nodig hebt; een badge op de knop verschijnt zodra er een nieuwe upgrade klaarstaat
 - 🎯 **Arcade-tussenspel** (Alien-jacht): ontgrendelt **elke 50 sterren** (50, 100, 150, …). Na een spel verschijnt *"Extra Spel! Zoek het in de ruimte…"*; het portaal duikt op in de ruimte, je tikt aliens/ballonnen aan om te schieten (1 ster per stuk, rotsblokken als afleiding), en na één keer spelen is het weer weg tot de volgende 50. Subtiel aftel-chipje toont de voortgang.
@@ -71,7 +71,7 @@ package.json            # dev-server script
 ```
 
 ## Volgende stappen (uit het analysedocument)
-- **Lezen-minigame** bouwen (AI-bootstrap + curatie van korte teksten + vragen)
+- Meer leesteksten + WO-vragen (uitbreiden contentbank)
 - Geluid/muziek (aan/uit-knop)
 - Meerdere profielen + ouder-dashboard
 - Curriculumafstemming op de Vlaamse eindtermen per leerjaar
