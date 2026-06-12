@@ -561,6 +561,15 @@ function drawExhaust(g,st,sp){ // getekend in UFO-ruimte, al geroteerd naar bewe
     g.fillStyle='rgba(255,235,160,.95)';g.beginPath(); g.ellipse(-38,18,len*0.4,4,0,0,6.2832); g.fill();
   }
 }
+function drawScoreStar(g,x,y,score,perfect){
+  const r=14; g.save(); g.lineJoin='round';
+  g.fillStyle='#FFD24A'; g.strokeStyle=C_NAVY; g.lineWidth=2.5;
+  g.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rad=i%2?r*0.45:r, px=x+Math.cos(a)*rad, py=y+Math.sin(a)*rad; i?g.lineTo(px,py):g.moveTo(px,py); } g.closePath(); g.fill(); g.stroke();
+  g.fillStyle=C_NAVY; g.font='bold '+(score>=10?10:13)+'px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(String(score), x, y+0.5);
+  if(!perfect){ g.fillStyle='#FFE7A0'; g.font='600 13px -apple-system,sans-serif'; g.textBaseline='alphabetic'; g.fillText('↻', x+r+9, y+5); }
+  g.restore();
+}
 function drawBeamIcon(g,b,s){
   g.save(); g.translate(b.x,b.y); g.strokeStyle=C_NAVY; g.fillStyle=C_NAVY;
   if(s.icon==='plus'){ g.lineWidth=4; g.lineCap='round'; g.beginPath(); g.moveTo(0,-9); g.lineTo(0,9); g.moveTo(-9,0); g.lineTo(9,0); g.stroke(); }
@@ -625,10 +634,9 @@ function render(){
     ctx.fillStyle=hexA(s.color,0.30); ctx.beginPath(); ctx.arc(b.x,b.y,b.r*(1+pulse*0.12),0,6.2832); ctx.fill();
     ctx.fillStyle=s.core; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(b.x,b.y,b.r*0.42,0,6.2832); ctx.fill(); ctx.stroke();
     drawBeamIcon(ctx,b,s);
-    ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center';
-    const lbl = !b.played ? s.label : (perfect ? s.label+' ✓ 10/10' : s.label+' · '+b.score+'/10');
-    ctx.fillText(lbl, b.x, b.y+b.r+6);
-    if(b.played && !perfect){ ctx.fillStyle='#FFE7A0'; ctx.font='600 12px -apple-system,sans-serif'; ctx.fillText('↻ opnieuw', b.x, b.y+b.r+24); }
+    ctx.fillStyle='#fff'; ctx.font='600 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(s.label, b.x, b.y+b.r+6);
+    if(b.played){ drawScoreStar(ctx, b.x, b.y+b.r+30, b.score, perfect); }
     ctx.globalAlpha=1;
   }
   for(const r of cur.rocks){
