@@ -106,6 +106,10 @@
   #nextup .nu-tx { opacity:.9; }
   #nextup .nu-need { background:rgba(255,210,74,.22); color:#FFE7A0; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
 
+  /* arcade-tussenspel: hub-HUD verbergen */
+  body.arcade #goal, body.arcade #hint, body.arcade #nextup, body.arcade #ubtn,
+  body.arcade #name, body.arcade #dimname { display:none !important; }
+
   /* feestmoment bij nieuwe upgrade */
   #celebrate { z-index:30; }
   #confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
@@ -141,6 +145,7 @@
 <div id="up" class="overlay"><div class="card" id="upcard"></div></div>
 <div id="start" class="overlay"><div class="card" id="startcard"></div></div>
 <div id="celebrate" class="overlay"><div id="confetti"></div><div class="card cele-card" id="celcard"></div></div>
+<div id="arcres" class="overlay"><div class="card cele-card" id="arcard"></div></div>
 
 <script>
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
@@ -196,16 +201,17 @@ const DIM_SPECS=[
   { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
     beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'rekenen'},
       {x:2950,y:1380,subject:'lezen'},{x:900,y:2150,subject:'logica'},{x:3200,y:2300,subject:'rekenen'} ],
-    blackhole:{x:1900,y:1300,target:1} },
+    blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:900} },
   { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:22,
     beams:[ {x:520,y:1900,subject:'rekenen'},{x:1700,y:400,subject:'logica'},{x:2700,y:1500,subject:'rekenen'},
       {x:1500,y:2050,subject:'lezen'},{x:2600,y:520,subject:'logica'} ],
-    blackhole:{x:1600,y:1200,target:0} }
+    blackhole:{x:1600,y:1200,target:0}, portal:{x:700,y:700} }
 ];
 function buildDimension(spec){
   const d={ name:spec.name, bg:spec.bg, star:spec.star, w:spec.w, h:spec.h, rockTint:spec.rockTint, rockCrater:spec.rockCrater,
     beams:spec.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false})),
     blackhole:{x:spec.blackhole.x,y:spec.blackhole.y,target:spec.blackhole.target,r:44,cool:0,unlocked:false},
+    portal:{x:spec.portal.x,y:spec.portal.y,r:48,cool:0,phase:Math.random()*6},
     rocks:[], layers:[] };
   for(let i=0;i<spec.rockCount;i++) d.rocks.push(makeRock(d));
   const defs=[{f:0.30,s:0.9,a:0.55},{f:0.55,s:1.3,a:0.8},{f:0.85,s:1.8,a:1}];
@@ -218,6 +224,7 @@ function makeRock(d){
   do{ x=rnd(120,d.w-120); y=rnd(120,d.h-120); ok=true; tries++;
     for(const b of d.beams) if(Math.hypot(x-b.x,y-b.y)<b.r+r+120) ok=false;
     if(Math.hypot(x-d.blackhole.x,y-d.blackhole.y)<r+150) ok=false;
+    if(d.portal && Math.hypot(x-d.portal.x,y-d.portal.y)<r+150) ok=false;
     if(Math.hypot(x-340,y-340)<280) ok=false;
   } while(!ok&&tries<60);
   const pts=[]; const n=Math.floor(rnd(7,10)); for(let k=0;k<n;k++)pts.push(rnd(0.74,1));
@@ -283,13 +290,18 @@ let stick={active:false,bx:0,by:0,cx:0,cy:0,id:null};
 addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;});
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 function ptr(e){ const t=e.touches?e.touches[0]:e; return {x:t.clientX,y:t.clientY,id:e.touches?t.identifier:'m'}; }
-cv.addEventListener('touchstart',e=>{e.preventDefault(); const p=ptr(e); stick={active:true,bx:p.x,by:p.y,cx:p.x,cy:p.y,id:p.id};},{passive:false});
-cv.addEventListener('touchmove',e=>{e.preventDefault(); if(!stick.active)return; for(const t of e.touches){ if(t.identifier===stick.id){ stick.cx=t.clientX; stick.cy=t.clientY; } }},{passive:false});
-cv.addEventListener('touchend',e=>{e.preventDefault(); stick.active=false;},{passive:false});
-cv.addEventListener('touchcancel',e=>{stick.active=false;});
-cv.addEventListener('mousedown',e=>{stick={active:true,bx:e.clientX,by:e.clientY,cx:e.clientX,cy:e.clientY,id:'m'};});
-addEventListener('mousemove',e=>{ if(stick.active&&stick.id==='m'){ stick.cx=e.clientX; stick.cy=e.clientY; }});
-addEventListener('mouseup',e=>{ if(stick.id==='m') stick.active=false; });
+// tik = schieten (arcade), slepen = vliegen
+let tapInfo=null;
+function tapStart(x,y){ tapInfo={x,y,t:performance.now(),moved:false}; }
+function tapMove(x,y){ if(tapInfo && Math.hypot(x-tapInfo.x,y-tapInfo.y)>14) tapInfo.moved=true; }
+function tapEnd(x,y){ if(tapInfo && mode==='arcade' && !tapInfo.moved && (performance.now()-tapInfo.t)<320) shootAt(x,y); tapInfo=null; }
+cv.addEventListener('touchstart',e=>{e.preventDefault(); const p=ptr(e); stick={active:true,bx:p.x,by:p.y,cx:p.x,cy:p.y,id:p.id}; tapStart(p.x,p.y);},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault(); if(!stick.active)return; for(const t of e.touches){ if(t.identifier===stick.id){ stick.cx=t.clientX; stick.cy=t.clientY; tapMove(t.clientX,t.clientY); } }},{passive:false});
+cv.addEventListener('touchend',e=>{e.preventDefault(); stick.active=false; tapEnd(stick.cx,stick.cy);},{passive:false});
+cv.addEventListener('touchcancel',e=>{stick.active=false; tapInfo=null;});
+cv.addEventListener('mousedown',e=>{stick={active:true,bx:e.clientX,by:e.clientY,cx:e.clientX,cy:e.clientY,id:'m'}; tapStart(e.clientX,e.clientY);});
+addEventListener('mousemove',e=>{ if(stick.active&&stick.id==='m'){ stick.cx=e.clientX; stick.cy=e.clientY; tapMove(e.clientX,e.clientY); }});
+addEventListener('mouseup',e=>{ if(stick.id==='m'){ stick.active=false; tapEnd(e.clientX,e.clientY); } });
 function thrustVec(){
   let tx=0,ty=0;
   if(keys['arrowleft']||keys['a'])tx-=1; if(keys['arrowright']||keys['d'])tx+=1;
@@ -332,6 +344,7 @@ function update(dt){
   const bh=cur.blackhole; if(bh.cool>0)bh.cool-=dt;
   for(const b of cur.beams){ if(b.cool<=0 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
   if(bh.unlocked && bh.cool<=0 && Math.hypot(ufo.x-bh.x,ufo.y-bh.y)<bh.r){ travel(bh.target); }
+  const pt=cur.portal; if(pt){ pt.phase+=dt; if(pt.cool>0)pt.cool-=dt; else if(Math.hypot(ufo.x-pt.x,ufo.y-pt.y)<pt.r){ startArcade(); } }
 
   const tx=ufo.x-W/2, ty=ufo.y-H/2;
   cam.x+=(tx-cam.x)*Math.min(1,dt*6); cam.y+=(ty-cam.y)*Math.min(1,dt*6);
@@ -398,6 +411,7 @@ function render(){
   ctx.save(); ctx.translate(-cam.x+sh,-cam.y+sh2);
   ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=6; ctx.strokeRect(3,3,cur.w-6,cur.h-6);
   if(cur.blackhole.unlocked) drawBlackhole(cur.blackhole);
+  if(cur.portal) drawPortal(cur.portal);
 
   // trail
   for(const tr of trail){ const a=tr.life/0.55; ctx.fillStyle='rgba(255,210,74,'+(a*0.8)+')'; star4(ctx,tr.x,tr.y,2+a*3); }
@@ -444,17 +458,149 @@ function drawMinimap(){
   for(const r of cur.rocks){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(px+r.x*sx,py+r.y*sy,1.4,0,6.2832); ctx.fill(); }
   for(const b of cur.beams){ ctx.globalAlpha=b.played?0.4:1; ctx.fillStyle=SUBJECTS[b.subject].color; ctx.beginPath(); ctx.arc(px+b.x*sx,py+b.y*sy,3.2,0,6.2832); ctx.fill(); ctx.globalAlpha=1; }
   if(cur.blackhole.unlocked){ const bh=cur.blackhole; ctx.fillStyle='#120C2C'; ctx.beginPath(); ctx.arc(px+bh.x*sx,py+bh.y*sy,3.6,0,6.2832); ctx.fill(); ctx.strokeStyle='#C58BE8'; ctx.lineWidth=1.4; ctx.stroke(); }
+  if(cur.portal){ const p=cur.portal; ctx.fillStyle='#6AD1A8'; ctx.beginPath(); ctx.arc(px+p.x*sx,py+p.y*sy,3.4,0,6.2832); ctx.fill(); ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=1.2; ctx.stroke(); }
   ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px+ufo.x*sx,py+ufo.y*sy,2.6,0,6.2832); ctx.fill();
 }
 function drawOffscreenHint(){
   const pois=cur.beams.filter(b=>!b.played).map(b=>({x:b.x,y:b.y,c:SUBJECTS[b.subject].color}));
   if(cur.blackhole.unlocked) pois.push({x:cur.blackhole.x,y:cur.blackhole.y,c:'#C58BE8'});
+  if(cur.portal) pois.push({x:cur.portal.x,y:cur.portal.y,c:'#6AD1A8'});
   let best=null,bd=1e9; for(const p of pois){ const d=Math.hypot(ufo.x-p.x,ufo.y-p.y); if(d<bd){bd=d;best=p;} }
   if(!best) return; const sx=best.x-cam.x, sy=best.y-cam.y;
   if(sx>40&&sx<W-40&&sy>40&&sy<H-40) return;
   const ang=Math.atan2(sy-H/2,sx-W/2), ex=W/2+Math.cos(ang)*(Math.min(W,H)/2-46), ey=H/2+Math.sin(ang)*(Math.min(W,H)/2-46);
   ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang); ctx.fillStyle=best.c; ctx.strokeStyle=C_NAVY; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-8,-8); ctx.lineTo(-8,8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+// ================= ARCADE TUSSENSPEL (alien-jacht) =================
+let mode='hub';
+const arcade={ time:0, score:0, bullets:[], targets:[], pops:[], rocks:[], spawnAcc:0, fireAcc:0, over:false, ret:null };
+const arEl=document.getElementById('arcres'), arcard=document.getElementById('arcard');
+
+function drawPortal(p){
+  const t=p.phase||0; ctx.save(); ctx.translate(p.x,p.y); const pulse=0.5+0.5*Math.sin(t*2.2);
+  for(let i=4;i>=1;i--){ ctx.fillStyle='rgba(106,209,168,'+(0.05*i)+')'; ctx.beginPath(); ctx.arc(0,0,p.r*0.7+i*9,0,6.2832); ctx.fill(); }
+  ctx.save(); ctx.rotate(t*1.1); ctx.strokeStyle='#6AD1A8'; ctx.lineWidth=6; ctx.setLineDash([14,10]);
+  ctx.beginPath(); ctx.arc(0,0,p.r*0.95,0,6.2832); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+  ctx.fillStyle='#143A30'; ctx.beginPath(); ctx.arc(0,0,p.r*0.62,0,6.2832); ctx.fill();
+  ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=3; ctx.stroke();
+  drawAlien(ctx,0,2,p.r*0.32,'#9BE66B',1+pulse*0.05);
+  ctx.restore();
+  ctx.fillStyle='#fff'; ctx.font='600 14px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('Alien-jacht', p.x, p.y+p.r+18);
+}
+function drawAlien(g,x,y,r,col,sc){
+  g.save(); g.translate(x,y); g.scale(sc||1,sc||1); g.lineJoin='round'; g.strokeStyle='#1E1B5E'; g.lineWidth=2.5;
+  g.beginPath(); g.moveTo(-r*0.3,-r*0.8); g.lineTo(-r*0.5,-r*1.3); g.moveTo(r*0.3,-r*0.8); g.lineTo(r*0.5,-r*1.3); g.stroke();
+  g.fillStyle='#FFD24A'; g.beginPath(); g.arc(-r*0.5,-r*1.35,r*0.16,0,6.2832); g.fill(); g.beginPath(); g.arc(r*0.5,-r*1.35,r*0.16,0,6.2832); g.fill();
+  g.fillStyle=col; ellipse(g,0,0,r,r*1.05); g.fill(); g.stroke();
+  g.fillStyle='#fff'; g.beginPath(); g.ellipse(-r*0.35,-r*0.1,r*0.26,r*0.32,0,0,6.2832); g.fill(); g.beginPath(); g.ellipse(r*0.35,-r*0.1,r*0.26,r*0.32,0,0,6.2832); g.fill();
+  g.fillStyle='#1E1B5E'; g.beginPath(); g.arc(-r*0.32,-r*0.05,r*0.12,0,6.2832); g.fill(); g.beginPath(); g.arc(r*0.38,-r*0.05,r*0.12,0,6.2832); g.fill();
+  g.strokeStyle='#1E1B5E'; g.lineWidth=2; g.beginPath(); g.arc(0,r*0.45,r*0.3,0.15,Math.PI-0.15); g.stroke();
+  g.restore();
+}
+function drawBalloon(g,x,y,r,col){
+  g.save(); g.translate(x,y); g.strokeStyle='#1E1B5E'; g.lineWidth=2;
+  g.beginPath(); g.moveTo(0,r); g.lineTo(0,r+r*0.7); g.stroke();
+  g.fillStyle=col; ellipse(g,0,0,r*0.85,r); g.fill(); g.stroke();
+  g.fillStyle='rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(-r*0.3,-r*0.35,r*0.18,r*0.26,-0.5,0,6.2832); g.fill();
+  g.restore();
+}
+function startArcade(){
+  mode='arcade'; document.body.classList.add('arcade');
+  arcade.time=60; arcade.score=0; arcade.bullets=[]; arcade.targets=[]; arcade.pops=[]; arcade.spawnAcc=0; arcade.fireAcc=0; arcade.over=false;
+  arcade.ret={x:cur.portal.x,y:cur.portal.y};
+  ufo.x=W/2; ufo.y=H*0.72; ufo.vx=0; ufo.vy=0; ufo.invuln=0; ufo.shake=0; stick.active=false; tapInfo=null;
+  arcade.rocks=[]; const nrock=3+Math.floor(rnd(0,2));
+  for(let i=0;i<nrock;i++) spawnArcadeRock();
+  for(let i=0;i<4;i++) spawnTarget();
+  toast('Tik de aliens om te schieten! ⏱ 1 minuut');
+}
+function spawnArcadeRock(){
+  const r=rnd(26,46); let x,y,tries=0;
+  do{ x=rnd(60,W-60); y=rnd(80,H-80); tries++; } while(Math.hypot(x-ufo.x,y-ufo.y)<160 && tries<30);
+  const ang=rnd(0,6.28), sp=rnd(25,55), pts=[]; const n=Math.floor(rnd(7,10));
+  for(let k=0;k<n;k++)pts.push(rnd(0.74,1));
+  arcade.rocks.push({x,y,r,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,rot:rnd(0,6.28),vr:rnd(-0.5,0.5),pts});
+}
+function shootAt(sx,sy){
+  if(mode!=='arcade'||arcade.over) return;
+  const dx=sx-ufo.x, dy=sy-ufo.y, d=Math.hypot(dx,dy)||1; const SP=820;
+  arcade.bullets.push({x:ufo.x, y:ufo.y, vx:dx/d*SP, vy:dy/d*SP, life:1.5});
+}
+function spawnTarget(){
+  const isAlien=Math.random()<0.6;
+  const cols=['#9BE66B','#F58BB0','#FFD24A','#5BA8E8','#C58BE8','#F2A65A'];
+  const r=isAlien?ri(20,28):ri(18,26);
+  const ang=rnd(0,6.28), sp=rnd(35,75);
+  arcade.targets.push({x:ri(50,W-50), y:ri(70,Math.max(120,H*0.5)), r, type:isAlien?'alien':'balloon',
+    col:cols[Math.floor(rnd(0,cols.length))], vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp*0.6, phase:rnd(0,6.28)});
+}
+function updateArcade(dt){
+  if(arcade.over) return;
+  arcade.time-=dt; if(arcade.time<=0){ arcade.time=0; endArcade(); return; }
+  const t=thrustVec(); ufo.vx+=t.x*ACCEL*t.m*dt; ufo.vy+=t.y*ACCEL*t.m*dt;
+  const fr=Math.exp(-FRICTION*dt); ufo.vx*=fr; ufo.vy*=fr;
+  const mv=feat.turbo?540:460, sp=Math.hypot(ufo.vx,ufo.vy); if(sp>mv){ ufo.vx=ufo.vx/sp*mv; ufo.vy=ufo.vy/sp*mv; }
+  ufo.x+=ufo.vx*dt; ufo.y+=ufo.vy*dt;
+  const m=42; ufo.x=Math.max(m,Math.min(W-m,ufo.x)); ufo.y=Math.max(m,Math.min(H-m,ufo.y));
+  // rotsblokken (afleiding): drijven rond + zachte botsing met UFO
+  if(arcade.rocks) for(const rk of arcade.rocks){ rk.x+=rk.vx*dt; rk.y+=rk.vy*dt; rk.rot+=rk.vr*dt;
+    if(rk.x<rk.r||rk.x>W-rk.r)rk.vx*=-1; if(rk.y<rk.r||rk.y>H-rk.r)rk.vy*=-1;
+    const dx=ufo.x-rk.x, dy=ufo.y-rk.y, d=Math.hypot(dx,dy), min=rk.r+34;
+    if(d<min){ const nx=dx/(d||1), ny=dy/(d||1); ufo.x=rk.x+nx*min; ufo.y=rk.y+ny*min;
+      const dot=ufo.vx*nx+ufo.vy*ny; ufo.vx=(ufo.vx-2*dot*nx)*0.6; ufo.vy=(ufo.vy-2*dot*ny)*0.6; } }
+  arcade.spawnAcc+=dt; if(arcade.spawnAcc>0.6 && arcade.targets.length<8){ arcade.spawnAcc=0; spawnTarget(); }
+  const ylim=Math.max(140,H*0.7);
+  for(const tg of arcade.targets){ tg.x+=tg.vx*dt; tg.y+=tg.vy*dt; tg.phase+=dt;
+    if(tg.x<tg.r){tg.x=tg.r;tg.vx*=-1;} if(tg.x>W-tg.r){tg.x=W-tg.r;tg.vx*=-1;}
+    if(tg.y<tg.r){tg.y=tg.r;tg.vy*=-1;} if(tg.y>ylim){tg.y=ylim;tg.vy*=-1;} }
+  for(const b of arcade.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    for(let i=arcade.targets.length-1;i>=0;i--){ const tg=arcade.targets[i];
+      if(Math.hypot(b.x-tg.x,b.y-tg.y)<tg.r+4){ b.life=0; arcade.targets.splice(i,1); arcade.score++; addStars(1);
+        arcade.pops.push({x:tg.x,y:tg.y,life:0.5,col:tg.col}); break; } } }
+  arcade.bullets=arcade.bullets.filter(b=>b.life>0 && b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+  for(const p of arcade.pops) p.life-=dt; arcade.pops=arcade.pops.filter(p=>p.life>0);
+}
+function renderArcade(){
+  ctx.clearRect(0,0,W,H); ctx.fillStyle=cur.bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba('+cur.star+',0.8)';
+  for(const s of cur.layers[2].st){ const px=s.x%W, py=s.y%H; ctx.beginPath(); ctx.arc(px,py,s.sz,0,6.2832); ctx.fill(); }
+  if(arcade.rocks) for(const rk of arcade.rocks){
+    ctx.save(); ctx.translate(rk.x,rk.y); ctx.rotate(rk.rot);
+    ctx.fillStyle=cur.rockTint; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.lineJoin='round';
+    ctx.beginPath(); const n=rk.pts.length;
+    for(let k=0;k<n;k++){ const a=k/n*6.2832, rr=rk.r*rk.pts[k], x=Math.cos(a)*rr, y=Math.sin(a)*rr; k?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=cur.rockCrater; ctx.beginPath(); ctx.arc(rk.r*0.2,-rk.r*0.15,rk.r*0.18,0,6.2832); ctx.fill(); ctx.restore();
+  }
+  for(const tg of arcade.targets){ const wob=Math.sin(tg.phase*3)*2;
+    if(tg.type==='alien') drawAlien(ctx,tg.x,tg.y+wob,tg.r,tg.col,1); else drawBalloon(ctx,tg.x,tg.y+wob,tg.r,tg.col); }
+  for(const p of arcade.pops){ const a=p.life/0.5; ctx.globalAlpha=a; ctx.strokeStyle=p.col; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(p.x,p.y,(1-a)*26+6,0,6.2832); ctx.stroke();
+    ctx.fillStyle='#FFD24A'; ctx.font='700 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('+1★',p.x,p.y-12-(1-a)*14); ctx.globalAlpha=1; }
+  for(const b of arcade.bullets){ ctx.fillStyle='#FFE7A0'; ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,6.2832); ctx.fill(); ctx.stroke(); }
+  ctx.save(); ctx.translate(ufo.x,ufo.y); const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/460*0.4)); ctx.rotate(bank); drawUFO(ctx,0.6); ctx.restore();
+  const sec=Math.ceil(arcade.time), bw=Math.min(W*0.7,280);
+  ctx.fillStyle='rgba(30,27,94,.82)'; roundRect(ctx,W/2-bw/2,16,bw,32,16); ctx.fill();
+  ctx.fillStyle=arcade.time<10?'#F58BB0':'#FFD24A'; ctx.font='700 17px -apple-system,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('⏱ '+sec+'s    ★ '+arcade.score, W/2, 38);
+}
+function endArcade(){
+  arcade.over=true;
+  arcard.innerHTML='<div class="cele-burst">🎯</div><div class="mg-msg ob-hi">Tijd om!</div>'+
+    '<div class="cele-name">'+arcade.score+' geschoten</div>'+
+    '<div class="mg-sub">Je verdiende <b>'+arcade.score+' sterren</b>! 🌟</div>'+
+    '<button class="btn" id="arbtn" style="margin-top:8px">Verder vliegen</button>';
+  arEl.classList.add('show');
+  document.getElementById('arbtn').onclick=()=>{
+    arEl.classList.remove('show'); document.body.classList.remove('arcade'); mode='hub';
+    const r=arcade.ret||{x:ufo.x,y:ufo.y}; cur.portal.cool=3;
+    const ang=Math.random()*6.28; ufo.x=Math.max(120,Math.min(cur.w-120,r.x+Math.cos(ang)*200));
+    ufo.y=Math.max(120,Math.min(cur.h-120,r.y+Math.sin(ang)*200)); ufo.vx=0; ufo.vy=0;
+    cam.x=ufo.x-W/2; cam.y=ufo.y-H/2; last=performance.now();
+    if(pendingUp.length) playCelebration();
+  };
 }
 
 // ---- mini-game ----
@@ -713,7 +859,9 @@ if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.s
 // laatste kans om op te slaan
 window.addEventListener('pagehide',saveState); window.addEventListener('visibilitychange',()=>{ if(document.hidden) saveState(); });
 
-function loop(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05; update(dt); render(); requestAnimationFrame(loop); }
+function loop(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05;
+  if(mode==='arcade'){ updateArcade(dt); renderArcade(); } else { update(dt); render(); }
+  requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
 </script>
 </body>

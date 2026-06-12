@@ -10,7 +10,8 @@ Gebaseerd op het analysedocument (fase 0/1 — POC/MVP). Mobile-first, **touch**
 ## Wat zit erin
 - 🛸 Bestuurbare UFO (sleep-joystick), rondzwevende rotsen, zacht terugkaatsen (geen straf)
 - 🟡 Beams voor **Rekenen** en **Logica** (10 vragen, procedureel gegenereerd) — **Lezen** = "komt binnenkort"
-- ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (20/50/75/150/200)
+- ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (20/50/75/150/200) met aftel-chipje + feestmoment
+- 🎯 **Arcade-tussenspel** (Alien-jacht): vlieg in het portaal → 1 minuut lang aliens/ballonnen **aantikken om te schieten** (1 ster per stuk), met rotsblokken als afleiding
 - 🎚️ Moeilijkheidsgraad per **leerjaar (LJ1–LJ6)** én **semester** (begin/einde schooljaar) — kiesbaar bij de start en in het upgrade-paneel. Echt leerplan voor LJ1–LJ2 (zie [LEERPLAN.md](LEERPLAN.md))
 - 💾 **Voortgang wordt opgeslagen** (localStorage) en hervat na sluiten
 - 📲 **PWA**: toe te voegen aan beginscherm, werkt **offline**, voelt als een app
