@@ -465,14 +465,23 @@ function drawModelClassic(g){
   for(const p of [[-52,6],[52,2],[0,16]]){ g.beginPath(); g.arc(p[0],p[1],6,0,6.2832); g.fill(); g.stroke(); }
   g.fillStyle='rgba(226,246,250,.9)'; ellipse(g,-13,-26,14,8); g.fill();
 }
-function drawModelBubble(g){ // grote glazen koepel
-  g.strokeStyle=C_NAVY;
-  g.fillStyle=C_LEG; g.lineWidth=3; for(const lx of [-34,23]){ roundRect(g,lx,20,11,20,5); g.fill(); g.stroke(); }
-  g.fillStyle='#A99BE8'; g.lineWidth=2.5; for(const f of [[-28,42],[28,42]]){ g.beginPath(); g.arc(f[0],f[1],7.5,0,6.2832); g.fill(); g.stroke(); }
-  g.fillStyle=ufoBody(); g.lineWidth=3; ellipse(g,0,20,60,16); g.fill(); g.stroke();
-  g.fillStyle=ufoDome(); g.lineWidth=3.5; g.beginPath(); g.arc(0,12,42,Math.PI*1.06,Math.PI*-0.06); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle='rgba(255,255,255,.4)'; g.beginPath(); g.ellipse(-15,-9,11,16,-0.4,0,6.2832); g.fill();
-  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.5; for(const p of [[-46,20],[46,20],[0,32]]){ g.beginPath(); g.arc(p[0],p[1],5.5,0,6.2832); g.fill(); g.stroke(); }
+function drawModelRing(g){ // schotel met gouden ring (Saturnus-stijl)
+  g.lineJoin='round'; g.lineCap='round';
+  g.fillStyle=C_LEG; g.strokeStyle=C_NAVY; g.lineWidth=3; for(const lx of [-28,17]){ roundRect(g,lx,16,11,20,5); g.fill(); g.stroke(); }
+  g.fillStyle='#A99BE8'; g.lineWidth=2.5; for(const f of [[-22,38],[22,38]]){ g.beginPath(); g.arc(f[0],f[1],7,0,6.2832); g.fill(); g.stroke(); }
+  // ring achter
+  g.strokeStyle=C_NAVY; g.lineWidth=12; g.beginPath(); g.ellipse(0,6,90,27,-0.1,Math.PI,Math.PI*2); g.stroke();
+  g.strokeStyle=C_LIGHT; g.lineWidth=8; g.beginPath(); g.ellipse(0,6,90,27,-0.1,Math.PI,Math.PI*2); g.stroke();
+  // body
+  g.fillStyle=ufoBody(); g.strokeStyle=C_NAVY; g.lineWidth=3; ellipse(g,0,6,50,19); g.fill(); g.stroke();
+  // dome
+  g.fillStyle=ufoDome(); g.lineWidth=3; ellipse(g,0,-9,29,25); g.fill(); g.stroke();
+  g.fillStyle='rgba(226,246,250,.9)'; ellipse(g,-9,-17,9,6); g.fill();
+  // ring voor (over het lijf)
+  g.strokeStyle=C_NAVY; g.lineWidth=12; g.beginPath(); g.ellipse(0,6,90,27,-0.1,0,Math.PI); g.stroke();
+  g.strokeStyle=C_LIGHT; g.lineWidth=8; g.beginPath(); g.ellipse(0,6,90,27,-0.1,0,Math.PI); g.stroke();
+  // lampjes
+  g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.4; for(const p of [[-34,8],[34,8],[0,15]]){ g.beginPath(); g.arc(p[0],p[1],5,0,6.2832); g.fill(); g.stroke(); }
 }
 function drawModelRacer(g){ // slank, snel
   g.strokeStyle=C_NAVY;
@@ -496,7 +505,7 @@ function drawModelCrystal(g){ // hoekig kristal
 }
 const MODELS=[
   {id:'klassiek', label:'Klassiek', at:0,   draw:drawModelClassic},
-  {id:'bol',      label:'Bol',      at:100, draw:drawModelBubble},
+  {id:'ring',     label:'Ring',     at:100, draw:drawModelRing},
   {id:'racer',    label:'Racer',    at:200, draw:drawModelRacer},
   {id:'kristal',  label:'Kristal',  at:300, draw:drawModelCrystal}
 ];
@@ -1004,7 +1013,7 @@ function buildUpgradePanel(){
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
   const thumbs = MODELS.map(m=>{ const unl=points>=m.at;
-    const lockEl = unl ? '' : '<div class="ufolock">🔒 '+m.at+' ★</div>';
+    const lockEl = unl ? '' : '<div class="ufolock">🔒 nog '+(m.at-points)+' ★</div>';
     return '<div class="ufopick"><div class="ufothumbwrap'+(unl?'':' locked')+'">'+
       '<canvas class="ufothumb'+(ufoModel===m.id?' sel':'')+'" width="84" height="62" data-m="'+m.id+'" data-unl="'+(unl?1:0)+'"></canvas>'+lockEl+'</div>'+
       '<div class="ufolabel">'+m.label+'</div></div>';
