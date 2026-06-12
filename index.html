@@ -368,10 +368,11 @@ function updateNextUp(){
 }
 function updateArcadeChip(){
   const el=document.getElementById('arcadenext'); if(!el) return;
-  if(arcadeAvail){ el.classList.add('ready'); el.innerHTML='<span class="nu-ic">👾</span><span class="nu-tx">Extra spel — zoek het!</span>'; return; }
+  const g=nextArcadeGame();
+  if(arcadeAvail){ el.classList.add('ready'); el.innerHTML='<span class="nu-ic">'+g.burst+'</span><span class="nu-tx">'+g.short+' — vlieg in het gat!</span>'; return; }
   el.classList.remove('ready');
   const need=ARCADE_STEP-(points%ARCADE_STEP);
-  el.innerHTML='<span class="nu-ic">👾</span><span class="nu-tx">Extra spel</span><span class="nu-need">nog '+need+' ★</span>';
+  el.innerHTML='<span class="nu-ic">'+g.burst+'</span><span class="nu-tx">'+g.short+'</span><span class="nu-need">nog '+need+' ★</span>';
 }
 function updateVakkenHud(){
   const el=document.getElementById('vakken'); if(!el) return;
@@ -407,7 +408,7 @@ function thrustVec(){
 
 let points=0, starsHere=0, paused=false, hintTimer=6;
 // alien-spel ontgrendelt elke 50 sterren; verdwijnt na 1 keer spelen
-const ARCADE_STEP=50;
+const ARCADE_STEP=40;
 let arcadeConsumed=0, arcadeAvail=false, arcadeAnnouncePending=false;
 function arcadeMilestones(){ return Math.floor(points/ARCADE_STEP); }
 let trail=[], trailAcc=0;
@@ -690,8 +691,21 @@ function drawOffscreenHint(){
 
 // ================= ARCADE TUSSENSPEL (alien-jacht) =================
 let mode='hub';
-const arcade={ time:0, score:0, bullets:[], targets:[], pops:[], rocks:[], spawnAcc:0, fireAcc:0, over:false, ret:null };
+const arcade={ game:'aliens', time:0, score:0, bullets:[], targets:[], pops:[], rocks:[], stars:[], rings:[], hearts:3, spawnAcc:0, fireAcc:0, surviveAcc:0, over:false, ret:null };
+const ARCADE_GAMES=[
+  {id:'aliens',  short:'Schieten',   label:'Alien-jacht',      burst:'🎯', hint:'Tik de aliens om te schieten!'},
+  {id:'sterren', short:'Sterren',    label:'Sterrenregen',     burst:'🌟', hint:'Vlieg over de sterren om ze te verzamelen!'},
+  {id:'ringen',  short:'Ringen',     label:'Ringen-race',      burst:'💫', hint:'Vlieg door de gloeiende ringen!'},
+  {id:'rotsen',  short:'Asteroïden', label:'Asteroïden-storm', burst:'🪨', hint:'Ontwijk de asteroïden, blijf leven!'}
+];
+// vaste rotatie: 40 Schieten · 80 Sterren · 120 Ringen · 160 Asteroïden · 200 Schieten · ...
+function nextArcadeGame(){ return ARCADE_GAMES[arcadeConsumed%ARCADE_GAMES.length]; }
 const arEl=document.getElementById('arcres'), arcard=document.getElementById('arcard');
+function drawHeart(g,x,y,s){ g.beginPath(); g.moveTo(x,y+s*0.35);
+  g.bezierCurveTo(x,y-s*0.25,x-s,y-s*0.25,x-s,y+s*0.12);
+  g.bezierCurveTo(x-s,y+s*0.5,x,y+s*0.8,x,y+s);
+  g.bezierCurveTo(x,y+s*0.8,x+s,y+s*0.5,x+s,y+s*0.12);
+  g.bezierCurveTo(x+s,y-s*0.25,x,y-s*0.25,x,y+s*0.35); g.closePath(); g.fill(); }
 
 function drawPortal(p){
   const t=p.phase||0; ctx.save(); ctx.translate(p.x,p.y); const pulse=0.5+0.5*Math.sin(t*2.2);
@@ -700,9 +714,10 @@ function drawPortal(p){
   ctx.beginPath(); ctx.arc(0,0,p.r*0.95,0,6.2832); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
   ctx.fillStyle='#143A30'; ctx.beginPath(); ctx.arc(0,0,p.r*0.62,0,6.2832); ctx.fill();
   ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=3; ctx.stroke();
-  drawAlien(ctx,0,2,p.r*0.32,'#9BE66B',1+pulse*0.05);
+  ctx.fillStyle='#FFD24A'; ctx.strokeStyle=C_NAVY; ctx.lineWidth=2.5; starPath(ctx,0,2,p.r*0.3*(1+pulse*0.05)); ctx.fill(); ctx.stroke();
   ctx.restore();
-  ctx.fillStyle='#fff'; ctx.font='600 14px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('Alien-jacht', p.x, p.y+p.r+18);
+  ctx.fillStyle='#fff'; ctx.font='600 13px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('Extra spel', p.x, p.y+p.r+16);
+  ctx.fillStyle='#FFE7A0'; ctx.font='700 14px -apple-system,sans-serif'; ctx.fillText(nextArcadeGame().label, p.x, p.y+p.r+34);
 }
 function drawAlien(g,x,y,r,col,sc){
   g.save(); g.translate(x,y); g.scale(sc||1,sc||1); g.lineJoin='round'; g.strokeStyle='#1E1B5E'; g.lineWidth=2.5;
@@ -723,14 +738,23 @@ function drawBalloon(g,x,y,r,col){
 }
 function startArcade(){
   mode='arcade'; document.body.classList.add('arcade');
-  arcade.time=60; arcade.score=0; arcade.bullets=[]; arcade.targets=[]; arcade.pops=[]; arcade.spawnAcc=0; arcade.fireAcc=0; arcade.over=false;
+  arcade.game=nextArcadeGame().id;
+  arcade.time=60; arcade.score=0; arcade.bullets=[]; arcade.targets=[]; arcade.pops=[]; arcade.rocks=[]; arcade.stars=[]; arcade.rings=[];
+  arcade.hearts=3; arcade.spawnAcc=0; arcade.fireAcc=0; arcade.surviveAcc=0; arcade.over=false;
   arcade.ret={x:cur.portal.x,y:cur.portal.y};
   ufo.x=W/2; ufo.y=H*0.72; ufo.vx=0; ufo.vy=0; ufo.invuln=0; ufo.shake=0; stick.active=false; tapInfo=null;
-  arcade.rocks=[]; const nrock=3+Math.floor(rnd(0,2));
-  for(let i=0;i<nrock;i++) spawnArcadeRock();
-  for(let i=0;i<4;i++) spawnTarget();
-  toast('Tik de aliens om te schieten! ⏱ 1 minuut');
+  const g=arcade.game;
+  if(g==='aliens'){ for(let i=0;i<3;i++) spawnArcadeRock(); for(let i=0;i<4;i++) spawnTarget(); }
+  else if(g==='sterren'){ for(let i=0;i<2;i++) spawnArcadeRock(); for(let i=0;i<6;i++) spawnStar(); }
+  else if(g==='ringen'){ spawnRing(); }
+  else if(g==='rotsen'){ for(let i=0;i<5;i++) spawnArcadeRock(); }
+  const info=ARCADE_GAMES.find(x=>x.id===g);
+  toast(info.hint+' ⏱ 1 minuut');
 }
+function spawnStar(){ const ang=rnd(0,6.28), sp=rnd(20,55);
+  arcade.stars.push({x:ri(50,W-50), y:ri(80,H-120), r:14, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, phase:rnd(0,6.28)}); }
+function spawnRing(){ let x,y,tries=0; do{ x=ri(80,W-80); y=ri(100,H-120); tries++; } while(Math.hypot(x-ufo.x,y-ufo.y)<170 && tries<30);
+  arcade.rings=[{x,y,r:42,phase:0}]; }
 function spawnArcadeRock(){
   const r=rnd(26,46); let x,y,tries=0;
   do{ x=rnd(60,W-60); y=rnd(80,H-80); tries++; } while(Math.hypot(x-ufo.x,y-ufo.y)<160 && tries<30);
@@ -739,7 +763,7 @@ function spawnArcadeRock(){
   arcade.rocks.push({x,y,r,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,rot:rnd(0,6.28),vr:rnd(-0.5,0.5),pts});
 }
 function shootAt(sx,sy){
-  if(mode!=='arcade'||arcade.over) return;
+  if(mode!=='arcade'||arcade.over||arcade.game!=='aliens') return;
   const dx=sx-ufo.x, dy=sy-ufo.y, d=Math.hypot(dx,dy)||1; const SP=820;
   arcade.bullets.push({x:ufo.x, y:ufo.y, vx:dx/d*SP, vy:dy/d*SP, life:1.5});
 }
@@ -756,32 +780,57 @@ function updateArcade(dt){
   arcade.time-=dt; if(arcade.time<=0){ arcade.time=0; endArcade(); return; }
   const t=thrustVec(); ufo.vx+=t.x*ACCEL*t.m*dt; ufo.vy+=t.y*ACCEL*t.m*dt;
   const fr=Math.exp(-FRICTION*dt); ufo.vx*=fr; ufo.vy*=fr;
-  const mv=equip.turbo?540:460, sp=Math.hypot(ufo.vx,ufo.vy); if(sp>mv){ ufo.vx=ufo.vx/sp*mv; ufo.vy=ufo.vy/sp*mv; }
+  const sp=Math.hypot(ufo.vx,ufo.vy); if(sp>curMaxV){ ufo.vx=ufo.vx/sp*curMaxV; ufo.vy=ufo.vy/sp*curMaxV; }
   ufo.x+=ufo.vx*dt; ufo.y+=ufo.vy*dt;
   const m=42; ufo.x=Math.max(m,Math.min(W-m,ufo.x)); ufo.y=Math.max(m,Math.min(H-m,ufo.y));
-  // rotsblokken (afleiding): drijven rond + zachte botsing met UFO
-  if(arcade.rocks) for(const rk of arcade.rocks){ rk.x+=rk.vx*dt; rk.y+=rk.vy*dt; rk.rot+=rk.vr*dt;
+  if(ufo.invuln>0)ufo.invuln-=dt; if(ufo.shake>0)ufo.shake-=dt;
+  const g=arcade.game;
+  // rotsblokken: drijven + botsing (zacht bij aliens/sterren, hartje kwijt bij asteroïden-storm)
+  for(const rk of arcade.rocks){ rk.x+=rk.vx*dt; rk.y+=rk.vy*dt; rk.rot+=rk.vr*dt;
     if(rk.x<rk.r||rk.x>W-rk.r)rk.vx*=-1; if(rk.y<rk.r||rk.y>H-rk.r)rk.vy*=-1;
     const dx=ufo.x-rk.x, dy=ufo.y-rk.y, d=Math.hypot(dx,dy), min=rk.r+34;
     if(d<min){ const nx=dx/(d||1), ny=dy/(d||1); ufo.x=rk.x+nx*min; ufo.y=rk.y+ny*min;
-      const dot=ufo.vx*nx+ufo.vy*ny; ufo.vx=(ufo.vx-2*dot*nx)*0.6; ufo.vy=(ufo.vy-2*dot*ny)*0.6; } }
-  arcade.spawnAcc+=dt; if(arcade.spawnAcc>0.6 && arcade.targets.length<8){ arcade.spawnAcc=0; spawnTarget(); }
-  const ylim=Math.max(140,H*0.7);
-  for(const tg of arcade.targets){ tg.x+=tg.vx*dt; tg.y+=tg.vy*dt; tg.phase+=dt;
-    if(tg.x<tg.r){tg.x=tg.r;tg.vx*=-1;} if(tg.x>W-tg.r){tg.x=W-tg.r;tg.vx*=-1;}
-    if(tg.y<tg.r){tg.y=tg.r;tg.vy*=-1;} if(tg.y>ylim){tg.y=ylim;tg.vy*=-1;} }
-  for(const b of arcade.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
-    for(let i=arcade.targets.length-1;i>=0;i--){ const tg=arcade.targets[i];
-      if(Math.hypot(b.x-tg.x,b.y-tg.y)<tg.r+4){ b.life=0; arcade.targets.splice(i,1); arcade.score++; addStars(1);
-        arcade.pops.push({x:tg.x,y:tg.y,life:0.5,col:tg.col}); break; } } }
-  arcade.bullets=arcade.bullets.filter(b=>b.life>0 && b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+      const dot=ufo.vx*nx+ufo.vy*ny; ufo.vx=(ufo.vx-2*dot*nx)*0.6; ufo.vy=(ufo.vy-2*dot*ny)*0.6;
+      if(g==='rotsen' && ufo.invuln<=0){ arcade.hearts--; ufo.invuln=1.2; ufo.shake=0.4; if(arcade.hearts<=0){ endArcade(); return; } } } }
+  if(g==='aliens'){
+    arcade.spawnAcc+=dt; if(arcade.spawnAcc>0.6 && arcade.targets.length<8){ arcade.spawnAcc=0; spawnTarget(); }
+    const ylim=Math.max(140,H*0.7);
+    for(const tg of arcade.targets){ tg.x+=tg.vx*dt; tg.y+=tg.vy*dt; tg.phase+=dt;
+      if(tg.x<tg.r){tg.x=tg.r;tg.vx*=-1;} if(tg.x>W-tg.r){tg.x=W-tg.r;tg.vx*=-1;}
+      if(tg.y<tg.r){tg.y=tg.r;tg.vy*=-1;} if(tg.y>ylim){tg.y=ylim;tg.vy*=-1;} }
+    for(const b of arcade.bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+      for(let i=arcade.targets.length-1;i>=0;i--){ const tg=arcade.targets[i];
+        if(Math.hypot(b.x-tg.x,b.y-tg.y)<tg.r+4){ b.life=0; arcade.targets.splice(i,1); arcade.score++; addStars(1);
+          arcade.pops.push({x:tg.x,y:tg.y,life:0.5,col:tg.col}); break; } } }
+    arcade.bullets=arcade.bullets.filter(b=>b.life>0 && b.x>-20 && b.x<W+20 && b.y>-20 && b.y<H+20);
+  }
+  else if(g==='sterren'){
+    arcade.spawnAcc+=dt; if(arcade.spawnAcc>0.5 && arcade.stars.length<9){ arcade.spawnAcc=0; spawnStar(); }
+    for(let i=arcade.stars.length-1;i>=0;i--){ const st=arcade.stars[i]; st.x+=st.vx*dt; st.y+=st.vy*dt; st.phase+=dt;
+      if(st.x<st.r||st.x>W-st.r)st.vx*=-1; if(st.y<st.r||st.y>H-st.r)st.vy*=-1;
+      if(Math.hypot(ufo.x-st.x,ufo.y-st.y)<st.r+30){ arcade.stars.splice(i,1); arcade.score++; addStars(1); arcade.pops.push({x:st.x,y:st.y,life:0.5,col:'#FFD24A'}); } }
+  }
+  else if(g==='ringen'){
+    const rg=arcade.rings[0]; if(rg){ rg.phase+=dt;
+      if(Math.hypot(ufo.x-rg.x,ufo.y-rg.y)<rg.r*0.7){ arcade.score++; addStars(1); arcade.pops.push({x:rg.x,y:rg.y,life:0.5,col:'#6AD1A8'}); spawnRing(); } }
+  }
+  else if(g==='rotsen'){
+    arcade.spawnAcc+=dt; const elapsed=60-arcade.time, wantRocks=5+Math.floor(elapsed/8);
+    if(arcade.spawnAcc>1.2 && arcade.rocks.length<wantRocks){ arcade.spawnAcc=0; spawnArcadeRock(); }
+    arcade.surviveAcc+=dt; if(arcade.surviveAcc>=2){ arcade.surviveAcc-=2; arcade.score++; addStars(1); arcade.pops.push({x:ufo.x,y:ufo.y-42,life:0.5,col:'#7BE0A0'}); }
+  }
   for(const p of arcade.pops) p.life-=dt; arcade.pops=arcade.pops.filter(p=>p.life>0);
 }
 function renderArcade(){
   ctx.clearRect(0,0,W,H); ctx.fillStyle=cur.bg; ctx.fillRect(0,0,W,H);
   ctx.fillStyle='rgba('+cur.star+',0.8)';
   for(const s of cur.layers[2].st){ const px=s.x%W, py=s.y%H; ctx.beginPath(); ctx.arc(px,py,s.sz,0,6.2832); ctx.fill(); }
-  if(arcade.rocks) for(const rk of arcade.rocks){
+  // ringen (achter)
+  for(const rg of arcade.rings){ const pulse=0.5+0.5*Math.sin(rg.phase*4);
+    ctx.strokeStyle='rgba(106,209,168,'+(0.25+pulse*0.35)+')'; ctx.lineWidth=16; ctx.beginPath(); ctx.arc(rg.x,rg.y,rg.r,0,6.2832); ctx.stroke();
+    ctx.strokeStyle='#6AD1A8'; ctx.lineWidth=7; ctx.beginPath(); ctx.arc(rg.x,rg.y,rg.r,0,6.2832); ctx.stroke();
+    ctx.strokeStyle=C_NAVY; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(rg.x,rg.y,rg.r+3.5,0,6.2832); ctx.stroke(); ctx.beginPath(); ctx.arc(rg.x,rg.y,rg.r-3.5,0,6.2832); ctx.stroke(); }
+  for(const rk of arcade.rocks){
     ctx.save(); ctx.translate(rk.x,rk.y); ctx.rotate(rk.rot);
     ctx.fillStyle=cur.rockTint; ctx.strokeStyle=C_NAVY; ctx.lineWidth=3.5; ctx.lineJoin='round';
     ctx.beginPath(); const n=rk.pts.length;
@@ -789,24 +838,29 @@ function renderArcade(){
     ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.fillStyle=cur.rockCrater; ctx.beginPath(); ctx.arc(rk.r*0.2,-rk.r*0.15,rk.r*0.18,0,6.2832); ctx.fill(); ctx.restore();
   }
+  // verzamel-sterren
+  for(const st of arcade.stars){ const wob=Math.sin(st.phase*3)*2; ctx.fillStyle='#FFD24A'; ctx.strokeStyle=C_NAVY; ctx.lineWidth=2.5; starPath(ctx,st.x,st.y+wob,st.r); ctx.fill(); ctx.stroke(); }
   for(const tg of arcade.targets){ const wob=Math.sin(tg.phase*3)*2;
     if(tg.type==='alien') drawAlien(ctx,tg.x,tg.y+wob,tg.r,tg.col,1); else drawBalloon(ctx,tg.x,tg.y+wob,tg.r,tg.col); }
   for(const p of arcade.pops){ const a=p.life/0.5; ctx.globalAlpha=a; ctx.strokeStyle=p.col; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(p.x,p.y,(1-a)*26+6,0,6.2832); ctx.stroke();
     ctx.fillStyle='#FFD24A'; ctx.font='700 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('+1★',p.x,p.y-12-(1-a)*14); ctx.globalAlpha=1; }
   for(const b of arcade.bullets){ ctx.fillStyle='#FFE7A0'; ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,6.2832); ctx.fill(); ctx.stroke(); }
-  ctx.save(); ctx.translate(ufo.x,ufo.y); const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/460*0.4)); ctx.rotate(bank); drawUFO(ctx,0.6); ctx.restore();
+  if(!(ufo.invuln>0 && Math.floor(ufo.invuln*16)%2)){ ctx.save(); ctx.translate(ufo.x,ufo.y); const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/curMaxV*0.4)); ctx.rotate(bank); drawUFO(ctx,0.6); ctx.restore(); }
   const sec=Math.ceil(arcade.time), bw=Math.min(W*0.7,280);
   ctx.fillStyle='rgba(30,27,94,.82)'; roundRect(ctx,W/2-bw/2,16,bw,32,16); ctx.fill();
   ctx.fillStyle=arcade.time<10?'#F58BB0':'#FFD24A'; ctx.font='700 17px -apple-system,sans-serif'; ctx.textAlign='center';
   ctx.fillText('⏱ '+sec+'s    ★ '+arcade.score, W/2, 38);
+  if(arcade.game==='rotsen'){ ctx.textAlign='left'; for(let i=0;i<3;i++){ ctx.fillStyle=i<arcade.hearts?'#F58BB0':'rgba(255,255,255,.25)'; drawHeart(ctx, 26+i*30, 60, 11); } }
 }
 function endArcade(){
   arcade.over=true;
-  arcard.innerHTML='<div class="cele-burst">🎯</div><div class="mg-msg ob-hi">Tijd om!</div>'+
-    '<div class="cele-name">'+arcade.score+' geschoten</div>'+
-    '<div class="mg-sub">Je verdiende <b>'+arcade.score+' sterren</b>! 🌟</div>'+
-    '<button class="btn" id="arbtn" style="margin-top:8px">Verder vliegen</button>';
+  const info=ARCADE_GAMES.find(x=>x.id===arcade.game)||ARCADE_GAMES[0];
+  const titel=(arcade.game==='rotsen'&&arcade.hearts<=0)?'Geraakt!':'Tijd om!';
+  arcard.innerHTML='<div class="cele-burst">'+info.burst+'</div><div class="mg-msg ob-hi">'+titel+'</div>'+
+    '<div class="stars-earned" style="font-size:30px">★ '+arcade.score+'</div>'+
+    '<div class="mg-sub"><b>'+arcade.score+' sterren</b> verdiend met '+info.label+'! 🌟</div>'+
+    '<button class="btn" id="arbtn" style="margin-top:8px">Terug naar de ruimte 🚀</button>';
   arEl.classList.add('show');
   document.getElementById('arbtn').onclick=()=>{
     arEl.classList.remove('show'); document.body.classList.remove('arcade'); mode='hub';
@@ -1260,8 +1314,10 @@ function resumeAfterOverlays(){
 const extraEl=document.getElementById('extra'), extracard=document.getElementById('extracard');
 function showExtraAnnounce(){
   arcadeAnnouncePending=false; paused=true;
-  extracard.innerHTML='<div class="cele-burst">👾</div><div class="mg-msg ob-hi">Extra Spel!</div>'+
-    '<div class="mg-sub">Zoek het in de ruimte en versla de aliens en ballonnen! 🛸</div>'+
+  const g=nextArcadeGame();
+  extracard.innerHTML='<div class="cele-burst">'+g.burst+'</div><div class="mg-msg ob-hi">Extra Spel!</div>'+
+    '<div class="cele-name">'+g.label+'</div>'+
+    '<div class="mg-sub">'+g.hint+'<br>Zoek het <b>gat</b> in de ruimte en vlieg erin! 🕳️</div>'+
     '<button class="btn" id="extrabtn" style="margin-top:8px">Op zoek! 🚀</button>';
   extraEl.classList.add('show');
   document.getElementById('extrabtn').onclick=()=>{ extraEl.classList.remove('show'); updateArcadeChip(); resumeAfterOverlays(); };
