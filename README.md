@@ -2,14 +2,14 @@
 
 Een educatief UFO-ruimtespel om te leren **rekenen**, **lezen** en **logisch nadenken**.
 Het kind bestuurt een UFO door de ruimte, vliegt door gekleurde **beams** en lost korte mini-games op.
-Elk juist antwoord = 1 ster. 100 sterren in een stelsel opent een **zwart gat** naar een nieuw stelsel.
+Elk juist antwoord = 1 ster. Speel **alle vakken** in een ruimte uit (1 beam per vak) en er opent een **zwart gat** naar een nieuwe ruimte.
 Sterren ontgrendelen **UFO-upgrades** (kleur, spoor, vleugels, turbo, gouden UFO).
 
 Gebaseerd op het analysedocument (fase 0/1 — POC/MVP). Mobile-first, **touch**, volledig Nederlands (Vlaams).
 
 ## Wat zit erin
 - 🛸 Bestuurbare UFO (sleep-joystick), rondzwevende rotsen, zacht terugkaatsen (geen straf)
-- 🟡 Beams voor **Rekenen**, **Logica**, **Klok** (analoge klok lezen), **Vormen** (meetkunde) en **Ruimte** (wereldoriëntatie: heelal/seizoenen/natuur) — 10 vragen, 1 ster per juist antwoord. **Lezen** = "komt binnenkort"
+- 🟡 **8 vakken**, 1 beam per vak per ruimte: **Rekenen**, **Logica**, **Klok** (analoge klok), **Vormen** (meetkunde), **Geld** (munten tellen), **Tellen** (hoeveelheden), **Ruimte** (wereldoriëntatie), **Lezen** (begrijpend lezen) — 10 vragen, 1 ster per juist antwoord. Elk vak heeft een **begin/einde-van-'t-jaar**-split. Vakken-teller (X/8) toont de voortgang; alle vakken spelen opent het zwarte gat
 - ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (70/100/125/175/200/250 ★) met aftel-chipje + feestmoment
 - 🛸 **"UFO garage"**: apart scherm met live UFO-preview. **Kies je UFO-model** — Klassiek (start), Ring (100 ★), Racer (200 ★), Kristal (300 ★); een nieuw model toont na een spel de melding *"Nieuwe UFO!"*. Pas per optie het **type** aan: kleur · spoor (lijntjes/sterren/bollen) · vleugels (rond/puntig/echt) · koepelkleur · turbo (vlam/bliksem/regenboog) · gouden UFO. Vergrendelde opties tonen hoeveel sterren je nog nodig hebt; een badge op de knop verschijnt zodra er een nieuwe upgrade klaarstaat
 - 🎯 **Arcade-tussenspel** (Alien-jacht): ontgrendelt **elke 50 sterren** (50, 100, 150, …). Na een spel verschijnt *"Extra Spel! Zoek het in de ruimte…"*; het portaal duikt op in de ruimte, je tikt aliens/ballonnen aan om te schieten (1 ster per stuk, rotsblokken als afleiding), en na één keer spelen is het weer weg tot de volgende 50. Subtiel aftel-chipje toont de voortgang.

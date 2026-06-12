@@ -58,6 +58,9 @@
     padding:18px 10px; font-size:34px; font-weight:700; margin:6px 0 20px; min-height:78px; display:flex; align-items:center; justify-content:center; }
   .qbox.seq { font-size:24px; letter-spacing:1px; }
   .qbox.draw { padding:12px; min-height:0; }
+  .qbox.lees { flex-direction:column; gap:10px; font-size:17px; line-height:1.4; padding:16px 16px; }
+  .lees-text { font-weight:600; }
+  .lees-q { font-weight:800; }
   .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
   #qcanvas { display:block; margin:0 auto; max-width:100%; height:auto; }
   .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
@@ -142,12 +145,17 @@
   .grade.sel::after { content:'✓'; position:absolute; top:5px; right:8px; font-size:13px; color:#1E1B5E; }
 
   /* subtiel aftel-chipje (volgende upgrade) */
-  #nextup { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 40px); display:flex; align-items:center; gap:6px;
+  #vakken { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 40px); display:flex; align-items:center; gap:6px;
+    background:rgba(30,27,94,.55); color:#fff; font-weight:600; font-size:12px; padding:5px 10px; border-radius:13px; }
+  #vakken .vk-ic { font-size:13px; }
+  #vakken .vk-n { background:rgba(255,255,255,.22); color:#fff; padding:1px 7px; border-radius:8px; font-size:11.5px; font-weight:800; }
+  #vakken .vk-tx { opacity:.9; }
+  #nextup { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 72px); display:flex; align-items:center; gap:6px;
     background:rgba(30,27,94,.55); color:#fff; font-weight:600; font-size:12px; padding:5px 10px; border-radius:13px; }
   #nextup .nu-ic { font-size:14px; }
   #nextup .nu-tx { opacity:.9; }
   #nextup .nu-need { background:rgba(255,210,74,.22); color:#FFE7A0; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
-  #arcadenext { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 72px); display:flex; align-items:center; gap:6px;
+  #arcadenext { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 104px); display:flex; align-items:center; gap:6px;
     background:rgba(30,27,94,.55); color:#fff; font-weight:600; font-size:12px; padding:5px 10px; border-radius:13px; }
   #arcadenext .nu-ic { font-size:14px; }
   #arcadenext .nu-tx { opacity:.9; }
@@ -162,7 +170,7 @@
   .quitbtn:active { transform:scale(.92); }
 
   /* arcade-tussenspel: hub-HUD verbergen */
-  body.arcade #goal, body.arcade #hint, body.arcade #nextup, body.arcade #arcadenext, body.arcade #ubtn,
+  body.arcade #goal, body.arcade #hint, body.arcade #vakken, body.arcade #nextup, body.arcade #arcadenext, body.arcade #ubtn,
   body.arcade #name, body.arcade #dimname { display:none !important; }
 
   /* feestmoment bij nieuwe upgrade */
@@ -190,6 +198,7 @@
   <svg class="star" viewBox="-8 -8 16 16"><path d="M0 -7 L1.6 -1.6 L7 0 L1.6 1.6 L0 7 L-1.6 1.6 L-7 0 L-1.6 -1.6 Z" fill="#FFD24A" stroke="#1E1B5E" stroke-width="1"/></svg>
   <span id="ptsval">0</span>
 </div>
+<div class="hud" id="vakken"></div>
 <div class="hud" id="nextup"></div>
 <div class="hud" id="arcadenext"></div>
 <button id="ubtn">🛸 UFO garage</button>
@@ -224,7 +233,11 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   lezen:{color:'#5BA8E8',core:'#C2E1F8',label:'Lezen',icon:'book'},
   klok:{color:'#F2A65A',core:'#FFD9B0',label:'Klok',icon:'clock'},
   vormen:{color:'#C58BE8',core:'#E6CFF5',label:'Vormen',icon:'shapes'},
-  ruimte:{color:'#33C9C6',core:'#BEEDEB',label:'Ruimte',icon:'planet'} };
+  ruimte:{color:'#33C9C6',core:'#BEEDEB',label:'Ruimte',icon:'planet'},
+  geld:{color:'#6AD1A8',core:'#C6EFDD',label:'Geld',icon:'coin'},
+  tellen:{color:'#F58BB0',core:'#FAD0DF',label:'Tellen',icon:'count'} };
+// volgorde van de vakken (1 beam per vak per ruimte)
+const SUBJECT_ORDER=['rekenen','logica','klok','vormen','geld','tellen','ruimte','lezen'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -255,14 +268,9 @@ function applySave(data){
   applyEquip();
   if(Array.isArray(data.dims)){
     data.dims.forEach((sd,i)=>{ const d=dims[i]; if(!d) return;
-      if(Array.isArray(sd.beams) && sd.beams.length){
-        const fresh=d.beams; // nieuw aangemaakte beams (incl. nieuwe vakken)
-        const restored=sd.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:!!b.played}));
-        // voeg beams van nieuwe vakken toe die nog niet in de save zaten
-        const newSubs=['klok','vormen','ruimte'];
-        for(const b of fresh){ if(newSubs.includes(b.subject) && !restored.some(r=>r.subject===b.subject && Math.abs(r.x-b.x)<6 && Math.abs(r.y-b.y)<6)) restored.push({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false}); }
-        d.beams=restored; }
-      d.blackhole.unlocked=!!sd.bh; });
+      // beam-indeling komt altijd uit DIM_SPECS (1 per vak); herstel enkel 'gespeeld' per vak
+      if(Array.isArray(sd.beams)){ const ps=new Set(sd.beams.filter(b=>b.played).map(b=>b.subject)); d.beams.forEach(b=>{ b.played=ps.has(b.subject); }); }
+      d.blackhole.unlocked = allPlayed(d); });
   }
   cur=dims[active];
   return true;
@@ -271,12 +279,13 @@ function applySave(data){
 const DIM_SPECS=[
   { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
     beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
-      {x:2950,y:1380,subject:'lezen'},{x:900,y:2150,subject:'vormen'},{x:3200,y:2300,subject:'rekenen'},
-      {x:1800,y:2200,subject:'ruimte'},{x:300,y:1300,subject:'logica'} ],
-    blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:900} },
-  { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:22,
-    beams:[ {x:520,y:1900,subject:'rekenen'},{x:1700,y:400,subject:'vormen'},{x:2700,y:1500,subject:'klok'},
-      {x:1500,y:2050,subject:'lezen'},{x:2600,y:520,subject:'logica'},{x:900,y:1100,subject:'ruimte'},{x:2100,y:1900,subject:'rekenen'} ],
+      {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
+      {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'} ],
+    blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:1500} },
+  { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:20,
+    beams:[ {x:520,y:1900,subject:'rekenen'},{x:2600,y:520,subject:'logica'},{x:2750,y:1550,subject:'klok'},
+      {x:1700,y:380,subject:'vormen'},{x:2150,y:1950,subject:'geld'},{x:1300,y:2050,subject:'tellen'},
+      {x:900,y:1100,subject:'ruimte'},{x:2900,y:2150,subject:'lezen'} ],
     blackhole:{x:1600,y:1200,target:0}, portal:{x:700,y:700} }
 ];
 function buildDimension(spec){
@@ -306,20 +315,9 @@ function makeRock(d){
 const dims=DIM_SPECS.map(buildDimension);
 let active=0, cur=dims[active];
 
-// extra beams so 100 is always reachable
-function brightBeams(d){ return d.beams.filter(b=>!b.played && b.subject!=='lezen').length; }
-function spawnBeams(d,n){
-  const subs=['rekenen','logica'];
-  for(let i=0;i<n;i++){ let x,y,ok,tries=0;
-    do{ x=rnd(160,d.w-160); y=rnd(160,d.h-160); ok=true; tries++;
-      for(const b of d.beams) if(Math.hypot(x-b.x,y-b.y)<160) ok=false;
-      if(Math.hypot(x-d.blackhole.x,y-d.blackhole.y)<180) ok=false;
-      if(Math.hypot(x-ufo.x,y-ufo.y)<260) ok=false;
-    } while(!ok&&tries<50);
-    d.beams.push({x,y,subject:subs[(d.beams.length)%2],r:54,cool:0,phase:Math.random()*6,played:false});
-  }
-}
-function ensureSupply(d){ if(starsHere<BH_GOAL && brightBeams(d)<3) spawnBeams(d,3); }
+// 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
+function allPlayed(d){ return d.beams.every(b=>b.played); }
+function playedCount(d){ return d.beams.filter(b=>b.played).length; }
 
 const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,dome:C_DOME,invuln:0,shake:0 };
 const DOME_COLORS=['#A6E4EE','#C2E1F8','#F4B9CE','#C8E6A0','#D9C2F0','#FFE7A0'];
@@ -373,6 +371,10 @@ function updateArcadeChip(){
   el.classList.remove('ready');
   const need=ARCADE_STEP-(points%ARCADE_STEP);
   el.innerHTML='<span class="nu-ic">👾</span><span class="nu-tx">Extra spel</span><span class="nu-need">nog '+need+' ★</span>';
+}
+function updateVakkenHud(){
+  const el=document.getElementById('vakken'); if(!el) return;
+  el.innerHTML='<span class="vk-ic">📚</span><span class="vk-n">'+playedCount(cur)+'/'+cur.beams.length+'</span><span class="vk-tx">vakken</span>';
 }
 
 const keys={};
@@ -449,13 +451,14 @@ function update(dt){
 
 function travel(target){
   active=target; cur=dims[active];
+  cur.beams.forEach(b=>{ b.played=false; b.cool=0; }); // nieuwe ruimte: alle vakken weer fris
   cur.blackhole.unlocked=false; cur.blackhole.cool=3; starsHere=0;
   const bh=cur.blackhole; const ang=Math.random()*6.2832;
   ufo.x=Math.max(120,Math.min(cur.w-120,bh.x+Math.cos(ang)*220));
   ufo.y=Math.max(120,Math.min(cur.h-120,bh.y+Math.sin(ang)*220));
   ufo.vx=0; ufo.vy=0; ufo.invuln=1; trail=[];
   cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
-  showDimName(); toast('Welkom in het '+cur.name+'!'); updateGoalHud(); scheduleSave();
+  showDimName(); toast('Welkom in het '+cur.name+'!'); updateGoalHud(); updateVakkenHud(); scheduleSave();
 }
 
 let ufoModel='klassiek';
@@ -570,6 +573,9 @@ function drawBeamIcon(g,b,s){
     g.strokeRect(2,-3,9,9); }
   else if(s.icon==='planet'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,7,0,6.2832); g.stroke();
     g.save(); g.rotate(-0.5); g.beginPath(); g.ellipse(0,0,13,4.5,0,0,6.2832); g.stroke(); g.restore(); }
+  else if(s.icon==='coin'){ g.lineWidth=2.4; g.beginPath(); g.arc(0,0,9,0,6.2832); g.stroke();
+    g.font='bold 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('€',0,1); }
+  else if(s.icon==='count'){ g.font='bold 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('123',0,0); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -798,7 +804,6 @@ const mg=document.getElementById('mg'), mgcard=document.getElementById('mgcard')
 let mgState=null;
 function openMiniGame(b){
   b.cool=2.8; paused=true; ufo.vx*=0.2; ufo.vy*=0.2;
-  if(b.subject==='lezen'){ showComingSoon(); return; }
   mgState={ beam:b, subject:b.subject, total:10, i:0, earned:0 };
   nextQuestion(); mg.classList.add('show');
 }
@@ -895,7 +900,10 @@ function drawClock(g,w,hh,hour,min){
   g.fillStyle=C_NAVY; g.beginPath(); g.arc(cx,cy,4.5,0,6.2832); g.fill();
 }
 function genKlok(){
-  const mins = level<=2 ? [0,30] : [0,15,30,45];
+  // begin van 't jaar = makkelijker (hele/halve uren), einde = + kwartieren
+  let mins;
+  if(level<=2) mins = semester===1 ? [0] : [0,30];
+  else mins = semester===1 ? [0,30] : [0,15,30,45];
   const h=ri(1,12), m=pick(mins), label=clockLabel(h,m);
   const opts=new Set([label]); let t=0;
   while(opts.size<3 && t<40){ t++; opts.add(clockLabel(ri(1,12),pick(mins))); }
@@ -918,9 +926,11 @@ function drawShape(g,w,hh,s){
   g.closePath(); g.fill(); g.stroke();
 }
 function genVormen(){
-  const pool = level<=2 ? SHAPES.filter(s=>['cirkel','driehoek','vierkant','rechthoek'].includes(s.id)) : SHAPES;
+  // begin = basisvormen + naam; einde = alle vormen + soms 'hoeveel hoeken'
+  const basic=SHAPES.filter(s=>['cirkel','driehoek','vierkant','rechthoek'].includes(s.id));
+  const pool = semester===1 ? basic : SHAPES;
   const s=pick(pool);
-  if(level>=2 && s.sides>0 && Math.random()<0.4){
+  if(semester===2 && s.sides>0 && Math.random()<0.4){
     const opts=new Set([String(s.sides)]); while(opts.size<3) opts.add(String(ri(3,7)));
     return { prompt:'Hoeveel hoeken?', draw:(g,w,h)=>drawShape(g,w,h,s), options:[...opts].sort(()=>Math.random()-0.5), correct:String(s.sides), wide:false };
   }
@@ -928,44 +938,105 @@ function genVormen(){
   return { prompt:'Welke vorm is dit?', draw:(g,w,h)=>drawShape(g,w,h,s), options:[...opts].sort(()=>Math.random()-0.5), correct:s.name, wide:true };
 }
 
-// ===== WERELDORIËNTATIE (ruimte, natuur, tijd) =====
+// ===== WERELDORIËNTATIE (ruimte, natuur, tijd) — d:1 begin, d:2 einde =====
 const WO_Q=[
-  {q:'Welke planeet staat het dichtst bij de zon?', a:['Mercurius','Aarde','Mars'], c:'Mercurius'},
-  {q:'Op welke planeet wonen wij?', a:['De Aarde','Jupiter','Venus'], c:'De Aarde'},
-  {q:'Wat zien we vooral overdag aan de hemel?', a:['De zon','De maan','Sterren'], c:'De zon'},
-  {q:'Welke planeet noemen we de rode planeet?', a:['Mars','Saturnus','De Aarde'], c:'Mars'},
-  {q:'Welke planeet heeft grote ringen?', a:['Saturnus','Mercurius','Venus'], c:'Saturnus'},
-  {q:'Wat geeft ons licht en warmte?', a:['De zon','De maan','Een wolk'], c:'De zon'},
-  {q:'Welk seizoen komt na de lente?', a:['De zomer','De winter','De herfst'], c:'De zomer'},
-  {q:'In welk seizoen vallen de blaadjes?', a:['De herfst','De lente','De zomer'], c:'De herfst'},
-  {q:'In welk seizoen sneeuwt het vaak?', a:['De winter','De zomer','De lente'], c:'De winter'},
-  {q:'Hoeveel dagen heeft een week?', a:['7','5','10'], c:'7'},
-  {q:'Hoeveel poten heeft een spin?', a:['8','6','4'], c:'8'},
-  {q:'Waar leeft een vis?', a:['In het water','In een boom','Onder de grond'], c:'In het water'},
-  {q:'Welk dier kan vliegen?', a:['Een vogel','Een vis','Een slang'], c:'Een vogel'},
-  {q:'Wat heb je nodig om te ademen?', a:['Lucht','Zand','Steen'], c:'Lucht'},
-  {q:'Welke vorm heeft de volle maan?', a:['Rond','Vierkant','Driehoek'], c:'Rond'},
-  {q:'Wat draait er rond de Aarde?', a:['De maan','De zon','Mars'], c:'De maan'},
-  {q:'Hoeveel poten heeft een hond?', a:['4','2','6'], c:'4'},
-  {q:'Wanneer gaan de meeste kinderen slapen?', a:['s Avonds','s Morgens','s Middags'], c:'s Avonds'}
+  {d:1, q:'Wat zien we vooral overdag aan de hemel?', a:['De zon','De maan','Sterren'], c:'De zon'},
+  {d:1, q:'Op welke planeet wonen wij?', a:['De Aarde','Jupiter','Venus'], c:'De Aarde'},
+  {d:1, q:'Wat geeft ons licht en warmte?', a:['De zon','De maan','Een wolk'], c:'De zon'},
+  {d:1, q:'Welk seizoen komt na de lente?', a:['De zomer','De winter','De herfst'], c:'De zomer'},
+  {d:1, q:'In welk seizoen vallen de blaadjes?', a:['De herfst','De lente','De zomer'], c:'De herfst'},
+  {d:1, q:'In welk seizoen sneeuwt het vaak?', a:['De winter','De zomer','De lente'], c:'De winter'},
+  {d:1, q:'Hoeveel dagen heeft een week?', a:['7','5','10'], c:'7'},
+  {d:1, q:'Waar leeft een vis?', a:['In het water','In een boom','Onder de grond'], c:'In het water'},
+  {d:1, q:'Welk dier kan vliegen?', a:['Een vogel','Een vis','Een slang'], c:'Een vogel'},
+  {d:1, q:'Hoeveel poten heeft een hond?', a:['4','2','6'], c:'4'},
+  {d:1, q:'Welke vorm heeft de volle maan?', a:['Rond','Vierkant','Driehoek'], c:'Rond'},
+  {d:1, q:'Wat heb je nodig om te ademen?', a:['Lucht','Zand','Steen'], c:'Lucht'},
+  {d:2, q:'Welke planeet staat het dichtst bij de zon?', a:['Mercurius','De Aarde','Mars'], c:'Mercurius'},
+  {d:2, q:'Welke planeet noemen we de rode planeet?', a:['Mars','Saturnus','De Aarde'], c:'Mars'},
+  {d:2, q:'Welke planeet heeft grote ringen?', a:['Saturnus','Mercurius','Venus'], c:'Saturnus'},
+  {d:2, q:'Wat draait er rond de Aarde?', a:['De maan','De zon','Mars'], c:'De maan'},
+  {d:2, q:'Hoeveel poten heeft een spin?', a:['8','6','4'], c:'8'},
+  {d:2, q:'Hoeveel maanden heeft een jaar?', a:['12','10','7'], c:'12'},
+  {d:2, q:'Wat is het grootste: de zon of de Aarde?', a:['De zon','De Aarde','Even groot'], c:'De zon'},
+  {d:2, q:'Welk dier legt eieren?', a:['De kip','De koe','De hond'], c:'De kip'}
 ];
-function genRuimte(){ const it=pick(WO_Q); return { prompt:it.q, seq:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
+function genRuimte(){ const pool = semester===2 ? WO_Q : WO_Q.filter(x=>x.d===1); const it=pick(pool.length?pool:WO_Q);
+  return { prompt:it.q, seq:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
+
+// ===== GELD (munten tellen) =====
+function coinLabel(c){ return c>=100 ? (c/100)+'€' : c+'c'; }
+function formatMoney(cents){ const e=Math.floor(cents/100), c=cents%100;
+  if(c===0) return e+' euro'; if(e===0) return c+' cent'; return e+' euro '+c; }
+function drawCoins(g,w,h,coins){
+  const per=Math.min(coins.length,4), r=20, gap=14, rows=Math.ceil(coins.length/per);
+  const rowW=per*(r*2)+(per-1)*gap, x0=(w-rowW)/2+r, y0=h/2-((rows-1)*(r*2+10))/2;
+  coins.forEach((c,i)=>{ const col=i%per, row=Math.floor(i/per);
+    const x=x0+col*(r*2+gap), y=y0+row*(r*2+10);
+    g.fillStyle = c>=100?'#FFD24A':'#D9DCE6'; g.strokeStyle=C_NAVY; g.lineWidth=3;
+    g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); g.stroke();
+    g.fillStyle=C_NAVY; g.font='bold 13px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(coinLabel(c),x,y); });
+}
+function genGeld(){
+  const pool = semester===1 ? [100,200] : [50,100,200];
+  const n = semester===1 ? ri(1,3) : ri(2,4);
+  const coins=[]; let total=0; for(let i=0;i<n;i++){ const c=pick(pool); coins.push(c); total+=c; }
+  const label=formatMoney(total), opts=new Set([label]); let t=0;
+  while(opts.size<3 && t<40){ t++; const d=total+pick([-100,-50,50,100,200]); if(d>0) opts.add(formatMoney(d)); }
+  while(opts.size<3) opts.add(formatMoney(total+50*(opts.size+1)));
+  return { prompt:'Hoeveel geld is dit?', draw:(g,w,h)=>drawCoins(g,w,h,coins), options:[...opts].sort(()=>Math.random()-0.5), correct:label, wide:true };
+}
+
+// ===== TELLEN (hoeveelheden) =====
+function drawCountItems(g,w,h,n){
+  const cols=5, r=12, cw=r*2+8, ch=r*2+8, rows=Math.ceil(n/cols);
+  const gridW=Math.min(n,cols)*cw, x0=(w-gridW)/2+r, y0=(h-rows*ch)/2+r;
+  g.fillStyle='#FFD24A';
+  for(let i=0;i<n;i++){ const c=i%cols, rr=Math.floor(i/cols); star4(g,x0+c*cw,y0+rr*ch,r); }
+}
+function genTellen(){
+  const max = semester===1 ? 10 : 20;
+  const n=ri(1,max), opts=new Set([String(n)]); let t=0;
+  while(opts.size<3 && t<40){ t++; const d=n+ri(-3,3); if(d>=1&&d!==n) opts.add(String(d)); }
+  while(opts.size<3) opts.add(String(n+opts.size+1));
+  return { prompt:'Hoeveel sterren zie je?', draw:(g,w,h)=>drawCountItems(g,w,h,n), options:[...opts].sort(()=>Math.random()-0.5), correct:String(n), wide:false };
+}
+
+// ===== LEZEN (begrijpend lezen) — d:1 begin, d:2 einde =====
+const LEES_Q=[
+  {d:1, t:'De gele raket vliegt naar de maan.', q:'Waar vliegt de raket naartoe?', a:['Naar de maan','Naar de zon','Naar de zee'], c:'Naar de maan'},
+  {d:1, t:'Mila ziet drie sterren aan de hemel.', q:'Hoeveel sterren ziet Mila?', a:['Drie','Twee','Vijf'], c:'Drie'},
+  {d:1, t:'De kleine alien is groen en blij.', q:'Welke kleur heeft de alien?', a:['Groen','Blauw','Rood'], c:'Groen'},
+  {d:1, t:'Tom eet een rode appel in zijn UFO.', q:'Wat eet Tom?', a:['Een appel','Een koek','Een banaan'], c:'Een appel'},
+  {d:1, t:'De ster is heel warm en geel.', q:'Hoe voelt de ster?', a:['Warm','Koud','Nat'], c:'Warm'},
+  {d:1, t:'De maan schijnt in de nacht.', q:'Wanneer schijnt de maan?', a:['In de nacht','Overdag','In de zomer'], c:'In de nacht'},
+  {d:2, t:'Sara vliegt met haar blauwe UFO voorbij een grote planeet met ringen.', q:'Welke kleur heeft de UFO van Sara?', a:['Blauw','Groen','Geel'], c:'Blauw'},
+  {d:2, t:'De astronaut verzamelt vijf gele stenen op een rode planeet.', q:'Hoeveel stenen verzamelt hij?', a:['Vijf','Drie','Tien'], c:'Vijf'},
+  {d:2, t:'Omdat het regende op de planeet, bleef de robot binnen in zijn schip.', q:'Waarom bleef de robot binnen?', a:['Het regende','Hij was moe','Het was nacht'], c:'Het regende'},
+  {d:2, t:'Eerst at de alien een koek, daarna dronk hij melk.', q:'Wat deed de alien als laatste?', a:['Melk drinken','Een koek eten','Slapen'], c:'Melk drinken'},
+  {d:2, t:'De drie vriendjes zoeken samen een nieuw sterrenstelsel om in te spelen.', q:'Wat zoeken de vriendjes?', a:['Een sterrenstelsel','Een planeet','Een maan'], c:'Een sterrenstelsel'}
+];
+function genLezen(){ const pool = semester===2 ? LEES_Q : LEES_Q.filter(x=>x.d===1); const it=pick(pool.length?pool:LEES_Q);
+  return { prompt:'<div class="lees-text">'+it.t+'</div><div class="lees-q">'+it.q+'</div>', seq:true, lees:true, options:[...it.a].sort(()=>Math.random()-0.5), correct:it.c, wide:true }; }
 
 function makeQuestion(subject){
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
   if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
   if(subject==='klok') return genKlok();
   if(subject==='vormen') return genVormen();
+  if(subject==='geld') return genGeld();
+  if(subject==='tellen') return genTellen();
   if(subject==='ruimte') return genRuimte();
+  if(subject==='lezen') return genLezen();
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ showResult(); return; }
   const q=makeQuestion(st.subject); const s=SUBJECTS[st.subject];
-  const showS = (st.subject==='rekenen'||st.subject==='logica');
+  const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
-  else { qhtml='<div class="qbox'+(q.seq?' seq':'')+'">'+q.prompt+'</div>'; }
+  else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':''))+'">'+q.prompt+'</div>'; }
   const ansHtml='<div class="answers'+(q.wide?' wide':'')+'">'+q.options.map(o=>'<button class="ans'+(q.wide?' wide':'')+'" data-v="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</button>').join('')+'</div>';
   mgcard.innerHTML=head+qhtml+ansHtml;
   if(q.draw){ const c=document.getElementById('qcanvas'); if(c){ const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); q.draw(g,c.width,c.height); } }
@@ -979,7 +1050,9 @@ function answer(btn,val,correct){
 }
 function showResult(){
   const e=mgState.earned;
-  if(mgState.beam){ mgState.beam.played=true; ensureSupply(cur); }
+  if(mgState.beam){ mgState.beam.played=true;
+    if(allPlayed(cur) && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Knap! Je speelde alle vakken — het zwarte gat is open. Vlieg erin naar een nieuwe ruimte!'); }
+    updateVakkenHud(); updateGoalHud(); }
   scheduleSave();
   const msg=e>=8?'Geweldig gedaan!':e>=5?'Goed bezig!':'Blijf oefenen!';
   const disp=e<=0?'☆':(e<=10?'★'.repeat(e):'★ × '+e);
@@ -1069,15 +1142,15 @@ function addStars(n){
   const wasAvail=arcadeAvail; arcadeAvail = arcadeMilestones()>arcadeConsumed;
   if(arcadeAvail && !wasAvail) arcadeAnnouncePending=true; // tonen na afloop van het spel
   updateArcadeChip();
-  if(starsHere>=BH_GOAL && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Een zwart gat is verschenen! Vlieg erin naar een nieuw stelsel.'); }
   updateGoalHud(); scheduleSave();
 }
 function updateGoalHud(){
   const tEl=document.getElementById('goaltext'), fEl=document.getElementById('goalfill'); if(!tEl)return;
-  if(cur.blackhole.unlocked){ tEl.textContent='Het zwarte gat is open — vlieg erin naar een nieuw stelsel!'; fEl.style.width='100%'; return; }
-  const need=Math.max(0,BH_GOAL-starsHere);
-  tEl.textContent='Nog '+need+' ★ → zwart gat naar een nieuw stelsel';
-  fEl.style.width=(starsHere/BH_GOAL*100)+'%';
+  const total=cur.beams.length, played=playedCount(cur);
+  if(cur.blackhole.unlocked){ tEl.textContent='Het zwarte gat is open — vlieg erin naar een nieuwe ruimte!'; fEl.style.width='100%'; return; }
+  const left=total-played;
+  tEl.textContent='Nog '+left+' vak'+(left===1?'':'ken')+' spelen → zwart gat';
+  fEl.style.width=(played/total*100)+'%';
 }
 
 // ---- upgrade panel ----
@@ -1204,6 +1277,7 @@ if(returning){ // herstel positie nabij blackhole/centrum van huidig stelsel
 checkUpgrades(true); // pas eerder verdiende upgrades stil toe + vul het aftel-chipje
 upgradeBadge=false; updateUfoBtn();
 arcadeAvail = arcadeMilestones()>arcadeConsumed; arcadeAnnouncePending=false; updateArcadeChip();
+updateVakkenHud();
 updateGoalHud();
 showStart(returning);
 
