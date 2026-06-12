@@ -24,7 +24,9 @@
     background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:15px; padding:7px 14px; border-radius:16px; }
   #pts .star { width:15px; height:15px; }
   #name { left:14px; display:flex; align-items:center; gap:8px;
-    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:14px; padding:6px 13px; border-radius:16px; }
+    background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:14px; padding:6px 13px; border-radius:16px;
+    pointer-events:auto; cursor:pointer; }
+  #name:active { transform:scale(.96); }
   #name .dot { width:16px; height:16px; border-radius:50%; background:#33C9C6; border:1.5px solid #fff; }
   #ubtn { position:absolute; top:calc(max(14px,env(safe-area-inset-top)) + 36px); left:14px; z-index:11; pointer-events:auto;
     background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:13px; border:none;
@@ -106,6 +108,12 @@
   #nextup .nu-tx { opacity:.9; }
   #nextup .nu-need { background:rgba(255,210,74,.22); color:#FFE7A0; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
 
+  /* stop-knop op de mini-game */
+  .mgwrap { position:relative; width:100%; max-width:440px; }
+  .quitbtn { position:absolute; top:-12px; right:-6px; z-index:5; width:40px; height:40px; border-radius:50%;
+    background:#1E1B5E; color:#fff; border:3px solid #6C6CE8; font-size:18px; font-weight:700; line-height:1; cursor:pointer; }
+  .quitbtn:active { transform:scale(.92); }
+
   /* arcade-tussenspel: hub-HUD verbergen */
   body.arcade #goal, body.arcade #hint, body.arcade #nextup, body.arcade #ubtn,
   body.arcade #name, body.arcade #dimname { display:none !important; }
@@ -141,7 +149,7 @@
 <div id="hint">Sleep om te vliegen — zoek de beams!</div>
 <div id="goal"><div id="goaltext">Nog 100 ★ tot het zwarte gat</div><div id="goalbar"><div id="goalfill"></div></div></div>
 <div id="toast"></div>
-<div id="mg" class="overlay"><div class="card" id="mgcard"></div></div>
+<div id="mg" class="overlay"><div class="mgwrap"><button id="mgquit" class="quitbtn" aria-label="Stoppen">✕</button><div class="card" id="mgcard"></div></div></div>
 <div id="up" class="overlay"><div class="card" id="upcard"></div></div>
 <div id="start" class="overlay"><div class="card" id="startcard"></div></div>
 <div id="celebrate" class="overlay"><div id="confetti"></div><div class="card cele-card" id="celcard"></div></div>
@@ -683,7 +691,7 @@ function genSeq(){
 }
 function distractors(ans){ const set=new Set([ans]), out=[]; const sp=Math.max(4,Math.round(ans*0.12));
   while(out.length<2){ let d=ans+Math.floor(rnd(-sp,sp+1)); if(d<0)d=ans+Math.floor(rnd(1,sp+1)); if(!set.has(d)){ set.add(d); out.push(d); } } return out; }
-function nextQuestion(){ const st=mgState; if(st.i>=st.total){ showResult(); return; }
+function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ showResult(); return; }
   const data=st.subject==='rekenen'?genMath():genSeq();
   const opts=[data.ans,...distractors(data.ans)].sort(()=>Math.random()-0.5); const s=SUBJECTS[st.subject];
   mgcard.innerHTML='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+' · S'+semester+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>'+
@@ -716,6 +724,13 @@ function showComingSoon(){
   mg.classList.add('show'); document.getElementById('mgdone').onclick=closeMiniGame;
 }
 function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ playCelebration(); } else { paused=false; last=performance.now(); } }
+function quitMiniGame(){
+  const b=mgState&&mgState.beam; mgState=null;
+  if(b){ b.cool=3; const dx=ufo.x-b.x, dy=ufo.y-b.y, d=Math.hypot(dx,dy)||1; // duw de UFO van de beam weg
+    ufo.x=b.x+dx/d*(b.r+70); ufo.y=b.y+dy/d*(b.r+70); ufo.vx=dx/d*180; ufo.vy=dy/d*180; }
+  closeMiniGame();
+}
+document.getElementById('mgquit').onclick=quitMiniGame;
 
 // ---- feestmoment bij een nieuwe upgrade ----
 const celEl=document.getElementById('celebrate'), celcard=document.getElementById('celcard');
@@ -764,6 +779,7 @@ function updateGoalHud(){
 // ---- upgrade panel ----
 const upEl=document.getElementById('up'), upcard=document.getElementById('upcard');
 document.getElementById('ubtn').onclick=openUpgrades;
+document.getElementById('name').onclick=()=>{ if(mode==='hub' && !mg.classList.contains('show') && !upEl.classList.contains('show')) showStart(true); };
 function openUpgrades(){ paused=true; buildUpgradePanel(); upEl.classList.add('show'); }
 function closeUpgrades(){ upEl.classList.remove('show'); paused=false; last=performance.now(); }
 function buildUpgradePanel(){
