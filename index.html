@@ -815,7 +815,9 @@ const mg=document.getElementById('mg'), mgcard=document.getElementById('mgcard')
 let mgState=null;
 function openMiniGame(b){
   b.cool=2.8; paused=true; ufo.vx*=0.2; ufo.vy*=0.2;
-  mgState={ beam:b, subject:b.subject, total:10, i:0, earned:0 };
+  const base=b.score||0;                      // al juist beantwoord
+  const total=base>0 ? (10-base) : 10;        // herspelen = enkel de overgebleven fouten
+  mgState={ beam:b, subject:b.subject, total, i:0, earned:0, base };
   nextQuestion(); mg.classList.add('show');
 }
 // moeilijkheidsgraad schaalt met gekozen leerjaar (level 1..6)
@@ -1061,7 +1063,7 @@ function genGeld(){
 function drawCountItems(g,w,h,n){
   const cols=5, r=12, cw=r*2+8, ch=r*2+8, rows=Math.ceil(n/cols);
   const gridW=Math.min(n,cols)*cw, x0=(w-gridW)/2+r, y0=(h-rows*ch)/2+r;
-  g.fillStyle='#FFD24A';
+  g.fillStyle='#1E1B5E';
   for(let i=0;i<n;i++){ const c=i%cols, rr=Math.floor(i/cols); star4(g,x0+c*cw,y0+rr*ch,r); }
 }
 function genTellen(){
@@ -1211,20 +1213,21 @@ function answer(btn,val,correct){
   mgState.i++; setTimeout(nextQuestion, val===correct?550:1050);
 }
 function showResult(){
-  const e=mgState.earned;
-  const wasPerfect = e>=10;
-  if(mgState.beam){ mgState.beam.played=true; mgState.beam.score=Math.max(mgState.beam.score||0, e);
+  const e=mgState.earned, total=mgState.total, base=mgState.base||0;
+  const newScore=Math.min(10, base+e);        // opgebouwde score
+  const perfect=newScore>=10;
+  if(mgState.beam){ mgState.beam.played=true; mgState.beam.score=newScore;
     if(allPlayed(cur) && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Knap! Je speelde alle vakken — het zwarte gat is open. Vlieg erin naar een nieuwe ruimte!'); }
     updateVakkenHud(); updateGoalHud(); }
   scheduleSave();
-  const best = mgState.beam ? mgState.beam.score : e;
-  const msg=e>=8?'Geweldig gedaan!':e>=5?'Goed bezig!':'Blijf oefenen!';
-  const disp=e<=0?'☆':(e<=10?'★'.repeat(e):'★ × '+e);
-  const extra = wasPerfect
+  const remaining=10-newScore;
+  const msg=e>=Math.max(1,Math.round(total*0.8))?'Geweldig gedaan!':e>=Math.ceil(total/2)?'Goed bezig!':'Blijf oefenen!';
+  const disp=e<=0?'☆':'★'.repeat(Math.min(e,10));
+  const extra = perfect
     ? '<div class="mg-sub">Alles juist! Dit vak is <b>voltooid</b> 🏆</div>'
-    : '<div class="mg-sub">Je beste score: <b>'+best+'/10</b>. Vlieg opnieuw door de beam om je fouten te verbeteren!</div>';
+    : '<div class="mg-sub">Je hebt nu <b>'+newScore+'/10</b> juist. Nog <b>'+remaining+'</b> te verbeteren — vlieg opnieuw door de beam!</div>';
   mgcard.innerHTML='<div class="stars-earned">'+disp+'</div><div class="mg-msg">'+msg+'</div>'+
-    '<div class="mg-sub">Je verdiende <b>'+e+' sterren</b> ('+e+' van 10 goed).</div>'+
+    '<div class="mg-sub">Je verdiende <b>'+e+' '+(e===1?'ster':'sterren')+'</b> ('+e+' van '+total+' goed).</div>'+
     extra+
     '<button class="btn" id="mgdone">Verder vliegen</button>';
   document.getElementById('mgdone').onclick=closeMiniGame;
