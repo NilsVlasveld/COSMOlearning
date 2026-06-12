@@ -103,10 +103,14 @@
   .stylechip:active { transform:scale(.95); }
   .ufothumbs { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
   .ufopick { text-align:center; }
+  .ufothumbwrap { position:relative; }
   .ufothumb { display:block; width:84px; height:62px; background:rgba(20,18,70,.4); border-radius:14px;
     border:3px solid transparent; cursor:pointer; }
   .ufothumb.sel { border-color:#FFD24A; }
   .ufothumb:active { transform:scale(.95); }
+  .ufothumbwrap.locked .ufothumb { opacity:.32; cursor:default; }
+  .ufolock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); pointer-events:none; }
   .ufolabel { font-size:11px; font-weight:700; margin-top:3px; opacity:.9; }
   .lvlrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:6px 0 4px; }
   .semrow { display:flex; gap:10px; justify-content:center; margin:6px 0 2px; }
@@ -194,6 +198,7 @@
 <div id="celebrate" class="overlay"><div id="confetti"></div><div class="card cele-card" id="celcard"></div></div>
 <div id="arcres" class="overlay"><div class="card cele-card" id="arcard"></div></div>
 <div id="extra" class="overlay"><div class="card cele-card" id="extracard"></div></div>
+<div id="newufo" class="overlay"><div class="card cele-card" id="newufocard"></div></div>
 
 <script>
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
@@ -490,12 +495,13 @@ function drawModelCrystal(g){ // hoekig kristal
   g.fillStyle=C_LIGHT; g.strokeStyle=C_NAVY; g.lineWidth=2.4; for(const p of [[-52,7],[52,7],[0,20]]){ g.beginPath(); g.arc(p[0],p[1],5.5,0,6.2832); g.fill(); g.stroke(); }
 }
 const MODELS=[
-  {id:'klassiek', label:'Klassiek', draw:drawModelClassic},
-  {id:'bol',      label:'Bol',      draw:drawModelBubble},
-  {id:'racer',    label:'Racer',    draw:drawModelRacer},
-  {id:'kristal',  label:'Kristal',  draw:drawModelCrystal}
+  {id:'klassiek', label:'Klassiek', at:0,   draw:drawModelClassic},
+  {id:'bol',      label:'Bol',      at:100, draw:drawModelBubble},
+  {id:'racer',    label:'Racer',    at:200, draw:drawModelRacer},
+  {id:'kristal',  label:'Kristal',  at:300, draw:drawModelCrystal}
 ];
 const MODELS_BY_ID={}; MODELS.forEach(m=>MODELS_BY_ID[m.id]=m);
+let modelAnnouncePending=false; // 'nieuwe UFO' tonen na afloop van een spel
 function drawWing(g,s,st){ // s=1 rechts, s=-1 links
   g.save(); g.scale(s,1); g.beginPath();
   if(st==='rond'){ g.ellipse(84,16,24,13,0,0,6.2832); g.fill(); g.stroke(); }
@@ -873,6 +879,7 @@ function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ pla
 // na alle overlays: toon eventueel de "Extra Spel!"-aankondiging, anders hervat
 function resumeAfterOverlays(){
   if(arcadeAnnouncePending && arcadeAvail){ showExtraAnnounce(); return; }
+  if(modelAnnouncePending){ showModelAnnounce(); return; }
   paused=false; last=performance.now();
 }
 const extraEl=document.getElementById('extra'), extracard=document.getElementById('extracard');
@@ -882,7 +889,18 @@ function showExtraAnnounce(){
     '<div class="mg-sub">Zoek het in de ruimte en versla de aliens en ballonnen! 🛸</div>'+
     '<button class="btn" id="extrabtn" style="margin-top:8px">Op zoek! 🚀</button>';
   extraEl.classList.add('show');
-  document.getElementById('extrabtn').onclick=()=>{ extraEl.classList.remove('show'); paused=false; last=performance.now(); updateArcadeChip(); };
+  document.getElementById('extrabtn').onclick=()=>{ extraEl.classList.remove('show'); updateArcadeChip(); resumeAfterOverlays(); };
+}
+const newufoEl=document.getElementById('newufo'), newufocard=document.getElementById('newufocard');
+function showModelAnnounce(){
+  modelAnnouncePending=false; paused=true;
+  const nm=MODELS.filter(m=>m.at>0 && points>=m.at).slice(-1)[0]; // laatst ontgrendelde
+  newufocard.innerHTML='<div class="cele-burst">🛸</div><div class="mg-msg ob-hi">Nieuwe UFO!</div>'+
+    '<div class="cele-name">'+(nm?nm.label:'Nieuw model')+'</div>'+
+    '<div class="mg-sub">Je hebt een nieuw ruimteschip vrijgespeeld! Kies het in de <b>UFO garage</b>.</div>'+
+    '<button class="btn" id="newufobtn" style="margin-top:8px">Naar de garage 🚀</button>';
+  newufoEl.classList.add('show');
+  document.getElementById('newufobtn').onclick=()=>{ newufoEl.classList.remove('show'); openUpgrades(); };
 }
 function quitMiniGame(){
   const b=mgState&&mgState.beam; mgState=null;
@@ -923,8 +941,11 @@ function playCelebration(){
 
 // ---- stars / progression ----
 function addStars(n){
+  const before=points;
   points+=n; starsHere+=n; document.getElementById('ptsval').textContent=points;
   checkUpgrades();
+  // nieuw UFO-model ontgrendeld? (100/200/300 ...)
+  for(const m of MODELS){ if(m.at>0 && before<m.at && points>=m.at){ modelAnnouncePending=true; upgradeBadge=true; updateUfoBtn(); } }
   const wasAvail=arcadeAvail; arcadeAvail = arcadeMilestones()>arcadeConsumed;
   if(arcadeAvail && !wasAvail) arcadeAnnouncePending=true; // tonen na afloop van het spel
   updateArcadeChip();
@@ -982,7 +1003,12 @@ function buildUpgradePanel(){
       '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div>'+chips+'</div>'+
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
-  const thumbs = MODELS.map(m=>'<div class="ufopick"><canvas class="ufothumb'+(ufoModel===m.id?' sel':'')+'" width="84" height="62" data-m="'+m.id+'"></canvas><div class="ufolabel">'+m.label+'</div></div>').join('');
+  const thumbs = MODELS.map(m=>{ const unl=points>=m.at;
+    const lockEl = unl ? '' : '<div class="ufolock">🔒 '+m.at+' ★</div>';
+    return '<div class="ufopick"><div class="ufothumbwrap'+(unl?'':' locked')+'">'+
+      '<canvas class="ufothumb'+(ufoModel===m.id?' sel':'')+'" width="84" height="62" data-m="'+m.id+'" data-unl="'+(unl?1:0)+'"></canvas>'+lockEl+'</div>'+
+      '<div class="ufolabel">'+m.label+'</div></div>';
+  }).join('');
   const picker = '<div class="opt" style="display:block"><div class="opt-name" style="margin-bottom:7px">🛸 Kies je UFO</div><div class="ufothumbs">'+thumbs+'</div></div>';
   upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 UFO garage</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
@@ -990,7 +1016,7 @@ function buildUpgradePanel(){
     rows+
     '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';
   MODELS.forEach(m=>{ const c=upcard.querySelector('.ufothumb[data-m="'+m.id+'"]'); if(c) drawModelThumb(c,m.id); });
-  upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ ufoModel=c.dataset.m; scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ if(c.dataset.unl!=='1') return; ufoModel=c.dataset.m; scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.stylechip').forEach(b=>b.onclick=()=>{ style[b.dataset.sk]=b.dataset.si; scheduleSave(); buildUpgradePanel(); });
