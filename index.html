@@ -176,7 +176,7 @@
 </div>
 <div class="hud" id="nextup"></div>
 <div class="hud" id="arcadenext"></div>
-<button id="ubtn">🛸 Pas UFO aan</button>
+<button id="ubtn">🛸 UFO garage</button>
 <div class="hud" id="dimname"></div>
 <div id="hint">Sleep om te vliegen — zoek de beams!</div>
 <div id="goal"><div id="goaltext">Nog 100 ★ tot het zwarte gat</div><div id="goalbar"><div id="goalfill"></div></div></div>
@@ -858,7 +858,7 @@ function spawnConfetti(){
 function clearConfetti(){ const layer=document.getElementById('confetti'); if(layer) layer.innerHTML=''; }
 function playCelebration(){
   paused=true; const u=pendingUp[0]; spawnConfetti();
-  const hint = u.key==='color' ? '<div class="mg-sub" style="margin-top:4px">Kies je kleur bij <b>Pas UFO aan</b>!</div>' : '';
+  const hint = u.key==='color' ? '<div class="mg-sub" style="margin-top:4px">Kies je kleur in de <b>UFO garage</b>!</div>' : '';
   celcard.innerHTML='<div class="cele-burst">'+u.icon+'</div>'+
     '<div class="mg-msg ob-hi">Hoera, een upgrade!</div>'+
     '<div class="cele-name">'+u.name+'</div>'+
@@ -928,7 +928,7 @@ function buildUpgradePanel(){
       '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div>'+chips+'</div>'+
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
-  upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 Pas je UFO aan</span><span class="pill">Totaal: '+points+' ★</span></div>'+
+  upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 UFO garage</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
     rows+
     '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';

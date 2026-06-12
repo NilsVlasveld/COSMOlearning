@@ -11,7 +11,7 @@ Gebaseerd op het analysedocument (fase 0/1 — POC/MVP). Mobile-first, **touch**
 - 🛸 Bestuurbare UFO (sleep-joystick), rondzwevende rotsen, zacht terugkaatsen (geen straf)
 - 🟡 Beams voor **Rekenen** en **Logica** (10 vragen, procedureel gegenereerd) — **Lezen** = "komt binnenkort"
 - ⭐ Sterren, zwart gat → 2e stelsel, UFO-upgrade-staffel (70/100/125/175/200/250 ★) met aftel-chipje + feestmoment
-- 🛸 **"Pas UFO aan"-garage**: apart scherm met live UFO-preview en per optie meerdere **types**: kleur · spoor (lijntjes/sterren/bollen) · vleugels (rond/puntig/echt) · koepelkleur · turbo (vlam/bliksem/regenboog) · gouden UFO. Vergrendelde opties tonen hoeveel sterren je nog nodig hebt; een badge op de knop verschijnt zodra er een nieuwe upgrade klaarstaat
+- 🛸 **"UFO garage"**: apart scherm met live UFO-preview en per optie meerdere **types**: kleur · spoor (lijntjes/sterren/bollen) · vleugels (rond/puntig/echt) · koepelkleur · turbo (vlam/bliksem/regenboog) · gouden UFO. Vergrendelde opties tonen hoeveel sterren je nog nodig hebt; een badge op de knop verschijnt zodra er een nieuwe upgrade klaarstaat
 - 🎯 **Arcade-tussenspel** (Alien-jacht): ontgrendelt **elke 50 sterren** (50, 100, 150, …). Na een spel verschijnt *"Extra Spel! Zoek het in de ruimte…"*; het portaal duikt op in de ruimte, je tikt aliens/ballonnen aan om te schieten (1 ster per stuk, rotsblokken als afleiding), en na één keer spelen is het weer weg tot de volgende 50. Subtiel aftel-chipje toont de voortgang.
 - 🎚️ Moeilijkheidsgraad per **leerjaar (LJ1–LJ6)** én **semester** (begin/einde schooljaar) — kiesbaar bij de start en in het upgrade-paneel. Echt leerplan voor LJ1–LJ2 (zie [LEERPLAN.md](LEERPLAN.md))
 - 💾 **Voortgang wordt opgeslagen** (localStorage) en hervat na sluiten
