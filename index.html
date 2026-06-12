@@ -870,23 +870,12 @@ function buildUpgradePanel(){
       '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div></div>'+
       '<div class="opt-ctrl">'+ctrl+'</div></div>';
   }
-  let lvls=''; for(let i=1;i<=6;i++) lvls+='<button class="lvlbtn'+(i===level?' sel':'')+'" data-l="'+i+'">LJ'+i+'</button>';
-  const sems='<button class="lvlbtn sembtn'+(semester===1?' sel':'')+'" data-s="1">Begin van \'t jaar</button>'+
-             '<button class="lvlbtn sembtn'+(semester===2?' sel':'')+'" data-s="2">Einde van \'t jaar</button>';
   upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 Pas je UFO aan</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
     rows+
-    '<div class="tname" style="text-align:center;margin:14px 0 2px">Moeilijkheidsgraad</div>'+
-    '<div class="tdesc" style="text-align:center;margin-bottom:6px">Kies leerjaar + periode voor de vragen</div>'+
-    '<div class="lvlrow">'+lvls+'</div>'+
-    '<div class="semrow" style="margin-top:8px">'+sems+'</div>'+
-    '<button class="btn ghost" id="upreset" style="margin:12px 0 4px">Voortgang wissen</button><br>'+
-    '<button class="btn" id="upclose" style="margin-top:6px">Klaar! 🚀</button>';
+    '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ ufo.color=b.dataset.c; equip.gold=false; scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); buildUpgradePanel(); });
-  upcard.querySelectorAll('.lvlbtn:not(.sembtn)').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l); scheduleSave(); buildUpgradePanel(); });
-  upcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s); scheduleSave(); buildUpgradePanel(); });
-  document.getElementById('upreset').onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   document.getElementById('upclose').onclick=closeUpgrades;
   drawUfoPreview();
 }
@@ -923,12 +912,14 @@ function showStart(returning){
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
     '<div class="grade-grid">'+grid+'</div>'+
     semrow+
-    '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>';
+    '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>'+
+    (returning ? '<br><button class="btn ghost" id="obreset" style="margin-top:10px">Voortgang wissen</button>' : '');
   startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
     startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s);
     startcard.querySelectorAll('.sembtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
+  const rb=document.getElementById('obreset'); if(rb) rb.onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
   document.getElementById('startbtn').onclick=()=>{
     const f=document.getElementById('obname');
