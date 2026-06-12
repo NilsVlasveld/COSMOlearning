@@ -107,6 +107,13 @@
   #nextup .nu-ic { font-size:14px; }
   #nextup .nu-tx { opacity:.9; }
   #nextup .nu-need { background:rgba(255,210,74,.22); color:#FFE7A0; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
+  #arcadenext { right:14px; top:calc(max(14px,env(safe-area-inset-top)) + 72px); display:flex; align-items:center; gap:6px;
+    background:rgba(30,27,94,.55); color:#fff; font-weight:600; font-size:12px; padding:5px 10px; border-radius:13px; }
+  #arcadenext .nu-ic { font-size:14px; }
+  #arcadenext .nu-tx { opacity:.9; }
+  #arcadenext .nu-need { background:rgba(106,209,168,.28); color:#C8F5DF; padding:1px 7px; border-radius:8px; font-size:11px; font-weight:700; }
+  #arcadenext.ready { background:rgba(106,209,168,.9); color:#143A30; }
+  #arcadenext.ready .nu-tx { opacity:1; font-weight:700; }
 
   /* stop-knop op de mini-game */
   .mgwrap { position:relative; width:100%; max-width:440px; }
@@ -115,7 +122,7 @@
   .quitbtn:active { transform:scale(.92); }
 
   /* arcade-tussenspel: hub-HUD verbergen */
-  body.arcade #goal, body.arcade #hint, body.arcade #nextup, body.arcade #ubtn,
+  body.arcade #goal, body.arcade #hint, body.arcade #nextup, body.arcade #arcadenext, body.arcade #ubtn,
   body.arcade #name, body.arcade #dimname { display:none !important; }
 
   /* feestmoment bij nieuwe upgrade */
@@ -144,6 +151,7 @@
   <span id="ptsval">0</span>
 </div>
 <div class="hud" id="nextup"></div>
+<div class="hud" id="arcadenext"></div>
 <button id="ubtn">UFO upgrades</button>
 <div class="hud" id="dimname"></div>
 <div id="hint">Sleep om te vliegen — zoek de beams!</div>
@@ -154,6 +162,7 @@
 <div id="start" class="overlay"><div class="card" id="startcard"></div></div>
 <div id="celebrate" class="overlay"><div id="confetti"></div><div class="card cele-card" id="celcard"></div></div>
 <div id="arcres" class="overlay"><div class="card cele-card" id="arcard"></div></div>
+<div id="extra" class="overlay"><div class="card cele-card" id="extracard"></div></div>
 
 <script>
 const cv=document.getElementById('game'), ctx=cv.getContext('2d');
@@ -182,7 +191,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, semester, ufoColor:ufo.color, feat:{...feat},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, feat:{...feat},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played})), bh:d.blackhole.unlocked })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -191,7 +200,7 @@ function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function applySave(data){
   if(!data) return false;
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
-  level=data.level||1; semester=data.semester||2; active=Math.min(data.active||0, dims.length-1);
+  level=data.level||1; semester=data.semester||2; arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.feat) Object.assign(feat, data.feat);
   if(feat.turbo) curMaxV=560; if(feat.gold && !data.ufoColor) ufo.color='#F2C84B';
@@ -292,6 +301,13 @@ function updateNextUp(){
   const need=Math.max(0,nx.at-points);
   el.innerHTML='<span class="nu-ic">'+nx.icon+'</span><span class="nu-tx">'+nx.short+'</span><span class="nu-need">nog '+need+' ★</span>';
 }
+function updateArcadeChip(){
+  const el=document.getElementById('arcadenext'); if(!el) return;
+  if(arcadeAvail){ el.classList.add('ready'); el.innerHTML='<span class="nu-ic">👾</span><span class="nu-tx">Extra spel — zoek het!</span>'; return; }
+  el.classList.remove('ready');
+  const need=ARCADE_STEP-(points%ARCADE_STEP);
+  el.innerHTML='<span class="nu-ic">👾</span><span class="nu-tx">Extra spel</span><span class="nu-need">nog '+need+' ★</span>';
+}
 
 const keys={};
 let stick={active:false,bx:0,by:0,cx:0,cy:0,id:null};
@@ -321,6 +337,10 @@ function thrustVec(){
 }
 
 let points=0, starsHere=0, paused=false, hintTimer=6;
+// alien-spel ontgrendelt elke 50 sterren; verdwijnt na 1 keer spelen
+const ARCADE_STEP=50;
+let arcadeConsumed=0, arcadeAvail=false, arcadeAnnouncePending=false;
+function arcadeMilestones(){ return Math.floor(points/ARCADE_STEP); }
 let trail=[], trailAcc=0;
 const cam={x:0,y:0};
 let last=performance.now();
@@ -352,7 +372,7 @@ function update(dt){
   const bh=cur.blackhole; if(bh.cool>0)bh.cool-=dt;
   for(const b of cur.beams){ if(b.cool<=0 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
   if(bh.unlocked && bh.cool<=0 && Math.hypot(ufo.x-bh.x,ufo.y-bh.y)<bh.r){ travel(bh.target); }
-  const pt=cur.portal; if(pt){ pt.phase+=dt; if(pt.cool>0)pt.cool-=dt; else if(Math.hypot(ufo.x-pt.x,ufo.y-pt.y)<pt.r){ startArcade(); } }
+  const pt=cur.portal; if(pt && arcadeAvail){ pt.phase+=dt; if(pt.cool>0)pt.cool-=dt; else if(Math.hypot(ufo.x-pt.x,ufo.y-pt.y)<pt.r){ startArcade(); } }
 
   const tx=ufo.x-W/2, ty=ufo.y-H/2;
   cam.x+=(tx-cam.x)*Math.min(1,dt*6); cam.y+=(ty-cam.y)*Math.min(1,dt*6);
@@ -419,7 +439,7 @@ function render(){
   ctx.save(); ctx.translate(-cam.x+sh,-cam.y+sh2);
   ctx.strokeStyle='rgba(255,255,255,.10)'; ctx.lineWidth=6; ctx.strokeRect(3,3,cur.w-6,cur.h-6);
   if(cur.blackhole.unlocked) drawBlackhole(cur.blackhole);
-  if(cur.portal) drawPortal(cur.portal);
+  if(cur.portal && arcadeAvail) drawPortal(cur.portal);
 
   // trail
   for(const tr of trail){ const a=tr.life/0.55; ctx.fillStyle='rgba(255,210,74,'+(a*0.8)+')'; star4(ctx,tr.x,tr.y,2+a*3); }
@@ -466,13 +486,13 @@ function drawMinimap(){
   for(const r of cur.rocks){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(px+r.x*sx,py+r.y*sy,1.4,0,6.2832); ctx.fill(); }
   for(const b of cur.beams){ ctx.globalAlpha=b.played?0.4:1; ctx.fillStyle=SUBJECTS[b.subject].color; ctx.beginPath(); ctx.arc(px+b.x*sx,py+b.y*sy,3.2,0,6.2832); ctx.fill(); ctx.globalAlpha=1; }
   if(cur.blackhole.unlocked){ const bh=cur.blackhole; ctx.fillStyle='#120C2C'; ctx.beginPath(); ctx.arc(px+bh.x*sx,py+bh.y*sy,3.6,0,6.2832); ctx.fill(); ctx.strokeStyle='#C58BE8'; ctx.lineWidth=1.4; ctx.stroke(); }
-  if(cur.portal){ const p=cur.portal; ctx.fillStyle='#6AD1A8'; ctx.beginPath(); ctx.arc(px+p.x*sx,py+p.y*sy,3.4,0,6.2832); ctx.fill(); ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=1.2; ctx.stroke(); }
+  if(cur.portal && arcadeAvail){ const p=cur.portal; ctx.fillStyle='#6AD1A8'; ctx.beginPath(); ctx.arc(px+p.x*sx,py+p.y*sy,3.4,0,6.2832); ctx.fill(); ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=1.2; ctx.stroke(); }
   ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px+ufo.x*sx,py+ufo.y*sy,2.6,0,6.2832); ctx.fill();
 }
 function drawOffscreenHint(){
   const pois=cur.beams.filter(b=>!b.played).map(b=>({x:b.x,y:b.y,c:SUBJECTS[b.subject].color}));
   if(cur.blackhole.unlocked) pois.push({x:cur.blackhole.x,y:cur.blackhole.y,c:'#C58BE8'});
-  if(cur.portal) pois.push({x:cur.portal.x,y:cur.portal.y,c:'#6AD1A8'});
+  if(cur.portal && arcadeAvail) pois.push({x:cur.portal.x,y:cur.portal.y,c:'#6AD1A8'});
   let best=null,bd=1e9; for(const p of pois){ const d=Math.hypot(ufo.x-p.x,ufo.y-p.y); if(d<bd){bd=d;best=p;} }
   if(!best) return; const sx=best.x-cam.x, sy=best.y-cam.y;
   if(sx>40&&sx<W-40&&sy>40&&sy<H-40) return;
@@ -607,7 +627,9 @@ function endArcade(){
     const ang=Math.random()*6.28; ufo.x=Math.max(120,Math.min(cur.w-120,r.x+Math.cos(ang)*200));
     ufo.y=Math.max(120,Math.min(cur.h-120,r.y+Math.sin(ang)*200)); ufo.vx=0; ufo.vy=0;
     cam.x=ufo.x-W/2; cam.y=ufo.y-H/2; last=performance.now();
-    if(pendingUp.length) playCelebration();
+    // verbruik 1 ontgrendeling -> spel verdwijnt tot de volgende 50 sterren
+    arcadeConsumed++; arcadeAvail = arcadeMilestones()>arcadeConsumed; updateArcadeChip(); scheduleSave();
+    if(pendingUp.length) playCelebration(); else resumeAfterOverlays();
   };
 }
 
@@ -723,7 +745,21 @@ function showComingSoon(){
     '<button class="btn" id="mgdone">Verder vliegen</button>';
   mg.classList.add('show'); document.getElementById('mgdone').onclick=closeMiniGame;
 }
-function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ playCelebration(); } else { paused=false; last=performance.now(); } }
+function closeMiniGame(){ mg.classList.remove('show'); if(pendingUp.length){ playCelebration(); } else { resumeAfterOverlays(); } }
+// na alle overlays: toon eventueel de "Extra Spel!"-aankondiging, anders hervat
+function resumeAfterOverlays(){
+  if(arcadeAnnouncePending && arcadeAvail){ showExtraAnnounce(); return; }
+  paused=false; last=performance.now();
+}
+const extraEl=document.getElementById('extra'), extracard=document.getElementById('extracard');
+function showExtraAnnounce(){
+  arcadeAnnouncePending=false; paused=true;
+  extracard.innerHTML='<div class="cele-burst">👾</div><div class="mg-msg ob-hi">Extra Spel!</div>'+
+    '<div class="mg-sub">Zoek het in de ruimte en versla de aliens en ballonnen! 🛸</div>'+
+    '<button class="btn" id="extrabtn" style="margin-top:8px">Op zoek! 🚀</button>';
+  extraEl.classList.add('show');
+  document.getElementById('extrabtn').onclick=()=>{ extraEl.classList.remove('show'); paused=false; last=performance.now(); updateArcadeChip(); };
+}
 function quitMiniGame(){
   const b=mgState&&mgState.beam; mgState=null;
   if(b){ b.cool=3; const dx=ufo.x-b.x, dy=ufo.y-b.y, d=Math.hypot(dx,dy)||1; // duw de UFO van de beam weg
@@ -757,7 +793,7 @@ function playCelebration(){
   document.getElementById('celbtn').onclick=()=>{
     pendingUp.shift(); clearConfetti();
     if(pendingUp.length){ playCelebration(); }
-    else { celEl.classList.remove('show'); paused=false; last=performance.now(); updateNextUp(); }
+    else { celEl.classList.remove('show'); updateNextUp(); resumeAfterOverlays(); }
   };
 }
 
@@ -765,6 +801,9 @@ function playCelebration(){
 function addStars(n){
   points+=n; starsHere+=n; document.getElementById('ptsval').textContent=points;
   checkUpgrades();
+  const wasAvail=arcadeAvail; arcadeAvail = arcadeMilestones()>arcadeConsumed;
+  if(arcadeAvail && !wasAvail) arcadeAnnouncePending=true; // tonen na afloop van het spel
+  updateArcadeChip();
   if(starsHere>=BH_GOAL && !cur.blackhole.unlocked){ cur.blackhole.unlocked=true; toast('Een zwart gat is verschenen! Vlieg erin naar een nieuw stelsel.'); }
   updateGoalHud(); scheduleSave();
 }
@@ -867,6 +906,7 @@ if(returning){ // herstel positie nabij blackhole/centrum van huidig stelsel
   cam.x=ufo.x-W/2; cam.y=ufo.y-H/2;
 }
 checkUpgrades(true); // pas eerder verdiende upgrades stil toe + vul het aftel-chipje
+arcadeAvail = arcadeMilestones()>arcadeConsumed; arcadeAnnouncePending=false; updateArcadeChip();
 updateGoalHud();
 showStart(returning);
 
