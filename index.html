@@ -1138,9 +1138,8 @@ function genGeldVraagstuk(){
   while(chosen.length<n && used.size<pool.length){ const it=pick(pool); if(!used.has(it[0])){ used.add(it[0]); chosen.push(it); } }
   let total=0; chosen.forEach(it=>total+=it[1]);
   const lijst=chosen.map(it=>'• '+it[0]+' ('+formatMoney(it[1])+')').join('<br>');
-  const formule=chosen.map(it=>formatMoney(it[1])).join(' + ')+' = ?';
   const prompt='<div class="lees-text">'+w.wie+' koopt bij '+w.naam+':<br>'+lijst+'</div>'+
-    '<div class="lees-q">Hoeveel moet '+w.wie+' betalen?<br><span style="font-weight:600;opacity:.85">'+formule+'</span></div>';
+    '<div class="lees-q">Tel alle prijzen samen.<br>Hoeveel moet '+w.wie+' betalen?</div>';
   return { prompt, lees:true, options:geldOpts(total), correct:formatMoney(total), wide:true };
 }
 function genGeld(){ return Math.random() < (semester===1?0.45:0.6) ? genGeldVraagstuk() : genGeldMunten(); }
