@@ -1113,15 +1113,37 @@ function drawCoins(g,w,h,coins){
     g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); g.stroke();
     g.fillStyle=C_NAVY; g.font='bold 13px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(coinLabel(c),x,y); });
 }
-function genGeld(){
+function geldOpts(total){ const opts=new Set([formatMoney(total)]); let t=0;
+  while(opts.size<3 && t<50){ t++; const d=total+pick([-200,-100,-50,50,100,200]); if(d>=50) opts.add(formatMoney(d)); }
+  while(opts.size<3) opts.add(formatMoney(total+100*(opts.size+1)));
+  return [...opts].sort(()=>Math.random()-0.5); }
+// munten tellen (bestaande oefening)
+function genGeldMunten(){
   const pool = semester===1 ? [100,200] : [50,100,200];
   const n = semester===1 ? ri(1,3) : ri(2,4);
   const coins=[]; let total=0; for(let i=0;i<n;i++){ const c=pick(pool); coins.push(c); total+=c; }
-  const label=formatMoney(total), opts=new Set([label]); let t=0;
-  while(opts.size<3 && t<40){ t++; const d=total+pick([-100,-50,50,100,200]); if(d>0) opts.add(formatMoney(d)); }
-  while(opts.size<3) opts.add(formatMoney(total+50*(opts.size+1)));
-  return { prompt:'Hoeveel geld is dit?', draw:(g,w,h)=>drawCoins(g,w,h,coins), options:[...opts].sort(()=>Math.random()-0.5), correct:label, wide:true };
+  return { prompt:'Hoeveel geld is dit?', draw:(g,w,h)=>drawCoins(g,w,h,coins), options:geldOpts(total), correct:formatMoney(total), wide:true };
 }
+// winkel-vraagstuk: prijzen optellen tot het totaalbedrag
+const GELD_WINKELS=[
+  {naam:'de bakker', wie:'Zus', items:[['een taart',1500],['een gebak',200],['een brood',250],['een koek',50],['twee snoepjes',10],['een koffiekoek',150],['een pistolet',80]]},
+  {naam:'de speelgoedwinkel', wie:'Tom', items:[['een bal',300],['een boek',400],['een auto',500],['een knuffel',800],['een puzzel',600],['stiften',250]]},
+  {naam:'de winkel', wie:'Mama', items:[['melk',100],['een brood',250],['kaas',300],['appels',200],['een fles sap',150],['eieren',220]]},
+  {naam:'de dierenwinkel', wie:'Lou', items:[['hondenbrokken',600],['een bot',250],['een speelbal',200],['vissenvoer',350]]}
+];
+function genGeldVraagstuk(){
+  const w=pick(GELD_WINKELS), n=semester===1?2:3;
+  let pool=w.items.filter(it=> semester===1 ? it[1]%100===0 : true); if(pool.length<n) pool=w.items.slice();
+  const chosen=[], used=new Set();
+  while(chosen.length<n && used.size<pool.length){ const it=pick(pool); if(!used.has(it[0])){ used.add(it[0]); chosen.push(it); } }
+  let total=0; chosen.forEach(it=>total+=it[1]);
+  const lijst=chosen.map(it=>'• '+it[0]+' ('+formatMoney(it[1])+')').join('<br>');
+  const formule=chosen.map(it=>formatMoney(it[1])).join(' + ')+' = ?';
+  const prompt='<div class="lees-text">'+w.wie+' koopt bij '+w.naam+':<br>'+lijst+'</div>'+
+    '<div class="lees-q">Hoeveel moet '+w.wie+' betalen?<br><span style="font-weight:600;opacity:.85">'+formule+'</span></div>';
+  return { prompt, lees:true, options:geldOpts(total), correct:formatMoney(total), wide:true };
+}
+function genGeld(){ return Math.random() < (semester===1?0.45:0.6) ? genGeldVraagstuk() : genGeldMunten(); }
 
 // ===== TELLEN (hoeveelheden) =====
 function drawCountItems(g,w,h,n){
