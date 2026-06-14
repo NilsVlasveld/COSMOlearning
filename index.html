@@ -63,6 +63,17 @@
   .lees-text { font-weight:600; }
   .lees-q { font-weight:800; }
   .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
+  /* geld invul-oefening */
+  .sum-row { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin:4px 0 6px; }
+  .sum-box { min-width:64px; padding:11px 8px; border:3px solid #1E1B5E; border-radius:13px; background:#fff; color:#1E1B5E; font-weight:800; font-size:15px; text-align:center; }
+  .sum-box.empty { background:rgba(255,255,255,.45); color:#9D99C2; }
+  .sum-box.cur { background:#fff; box-shadow:0 0 0 4px rgba(255,210,74,.75); }
+  .sum-box.done { background:#C8E6A0; }
+  .sum-op { font-size:20px; font-weight:800; color:#fff; }
+  .sum-chips { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .sum-chip { background:#FFE7A0; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:14px; font-weight:800; font-size:15px; padding:12px 15px; cursor:pointer; }
+  .sum-chip:active { transform:scale(.95); }
+  .sum-chip.bad { background:#F08A8A; }
   #qcanvas { display:block; margin:0 auto; max-width:100%; height:auto; }
   .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
   .answers.wide { flex-direction:column; gap:10px; }
@@ -1138,9 +1149,8 @@ function genGeldVraagstuk(){
   while(chosen.length<n && used.size<pool.length){ const it=pick(pool); if(!used.has(it[0])){ used.add(it[0]); chosen.push(it); } }
   let total=0; chosen.forEach(it=>total+=it[1]);
   const lijst=chosen.map(it=>'• '+it[0]+' ('+formatMoney(it[1])+')').join('<br>');
-  const prompt='<div class="lees-text">'+w.wie+' koopt bij '+w.naam+':<br>'+lijst+'</div>'+
-    '<div class="lees-q">Tel alle prijzen samen.<br>Hoeveel moet '+w.wie+' betalen?</div>';
-  return { prompt, lees:true, options:geldOpts(total), correct:formatMoney(total), wide:true };
+  const blanks=chosen.map(it=>it[1]).concat(total);
+  return { fill:true, lijst:(w.wie+' koopt bij '+w.naam+':<br>'+lijst), blanks, total };
 }
 function genGeld(){ return Math.random() < (semester===1?0.45:0.6) ? genGeldVraagstuk() : genGeldMunten(); }
 
@@ -1288,6 +1298,7 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   const q=makeQuestion(st.subject); const s=SUBJECTS[st.subject];
   const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
+  if(q.fill){ renderFill(q, head); return; }
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
   else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':''))+'">'+q.prompt+'</div>'; }
@@ -1301,6 +1312,33 @@ function answer(btn,val,correct){
   if(val===correct){ btn.classList.add('good'); mgState.earned+=1; addStars(1); }
   else { btn.classList.add('bad'); btns.forEach(b=>{ if(b.dataset.v===correct)b.classList.add('good'); }); }
   mgState.i++; setTimeout(nextQuestion, val===correct?550:1050);
+}
+// invul-oefening: leerling vult de prijzen + het totaal zelf in ( ... + ... + ... = ... )
+function renderFill(q, head){
+  const blanks=q.blanks; let cur=0;
+  const vals=new Set(blanks); [q.total+100,q.total-100,blanks[0]+50,q.total+50].forEach(v=>{ if(v>0 && vals.size<7) vals.add(v); });
+  const chips=[...vals].sort(()=>Math.random()-0.5);
+  function draw(){
+    let row='';
+    for(let i=0;i<blanks.length;i++){
+      const cls = i<cur?'sum-box done':(i===cur?'sum-box cur':'sum-box empty');
+      row+='<div class="'+cls+'">'+(i<cur?formatMoney(blanks[i]):'?')+'</div>';
+      if(i<blanks.length-1) row+='<div class="sum-op">'+(i===blanks.length-2?'=':'+')+'</div>';
+    }
+    const chipHtml=chips.map(c=>'<button class="sum-chip" data-v="'+c+'">'+formatMoney(c)+'</button>').join('');
+    mgcard.innerHTML=head+
+      '<div class="qbox lees"><div class="lees-text">'+q.lijst+'</div><div class="lees-q">Vul de prijzen in en tel op:</div></div>'+
+      '<div class="sum-row">'+row+'</div>'+
+      '<div class="sum-chips">'+chipHtml+'</div>';
+    mgcard.querySelectorAll('.sum-chip').forEach(btn=>btn.onclick=()=>{
+      const v=parseInt(btn.dataset.v);
+      if(v===blanks[cur]){ cur++; draw();
+        if(cur>=blanks.length){ mgcard.querySelectorAll('.sum-chip').forEach(b=>b.disabled=true);
+          mgState.earned+=1; addStars(1); mgState.i++; setTimeout(nextQuestion,850); }
+      } else { btn.classList.add('bad'); setTimeout(()=>btn.classList.remove('bad'),400); }
+    });
+  }
+  draw();
 }
 function showResult(){
   const e=mgState.earned, total=mgState.total, base=mgState.base||0;
