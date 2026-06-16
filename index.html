@@ -1115,14 +1115,42 @@ function genRuimte(){ const tier=woTier();
 function coinLabel(c){ return c>=100 ? (c/100)+'€' : c+'c'; }
 function formatMoney(cents){ const e=Math.floor(cents/100), c=cents%100;
   if(c===0) return e+' euro'; if(e===0) return c+' cent'; return e+' euro '+c; }
+// echte euro-munten: kleur + formaat per muntsoort
+// koper (1/2/5c) · goud (10/20/50c) · bi-color (1€ zilver→goud, 2€ goud→zilver)
+const EURO_COINS={
+  1:   {r:14, outer:'#C97934', inner:'#C97934', txt:'1', sub:'cent'},
+  2:   {r:16, outer:'#C97934', inner:'#C97934', txt:'2', sub:'cent'},
+  5:   {r:18, outer:'#C97934', inner:'#C97934', txt:'5', sub:'cent'},
+  10:  {r:16, outer:'#E8B547', inner:'#E8B547', txt:'10', sub:'cent'},
+  20:  {r:18, outer:'#E8B547', inner:'#E8B547', txt:'20', sub:'cent'},
+  50:  {r:20, outer:'#E8B547', inner:'#E8B547', txt:'50', sub:'cent'},
+  100: {r:20, outer:'#D2D6DE', inner:'#E8B547', txt:'1',  sub:'EURO'},
+  200: {r:22, outer:'#E8B547', inner:'#D2D6DE', txt:'2',  sub:'EURO'}
+};
+function drawEuroCoin(g,x,y,value){
+  const c=EURO_COINS[value]||EURO_COINS[100], r=c.r;
+  // schaduw
+  g.fillStyle='rgba(30,27,94,.3)'; g.beginPath(); g.arc(x,y+2.5,r,0,6.2832); g.fill();
+  // buitenring
+  g.fillStyle=c.outer; g.strokeStyle=C_NAVY; g.lineWidth=1.8; g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); g.stroke();
+  // binnenkern (alleen voor 1€/2€ bi-color)
+  if(c.outer!==c.inner){ g.fillStyle=c.inner; g.beginPath(); g.arc(x,y,r*0.68,0,6.2832); g.fill();
+    g.strokeStyle='rgba(30,27,94,.4)'; g.lineWidth=0.8; g.stroke(); }
+  // glansje
+  g.fillStyle='rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(x-r*0.35,y-r*0.4,r*0.32,r*0.18,-0.5,0,6.2832); g.fill();
+  // cijfer
+  g.fillStyle=C_NAVY; g.textAlign='center'; g.textBaseline='middle';
+  g.font='800 '+(r*0.85)+'px -apple-system,sans-serif'; g.fillText(c.txt, x, y-r*0.05);
+  // klein label eronder (CENT/EURO)
+  g.font='700 '+(Math.max(7,r*0.34))+'px -apple-system,sans-serif'; g.fillText(c.sub, x, y+r*0.55);
+}
 function drawCoins(g,w,h,coins){
-  const per=Math.min(coins.length,4), r=20, gap=14, rows=Math.ceil(coins.length/per);
-  const rowW=per*(r*2)+(per-1)*gap, x0=(w-rowW)/2+r, y0=h/2-((rows-1)*(r*2+10))/2;
+  const per=Math.min(coins.length,4), gap=12, rows=Math.ceil(coins.length/per);
+  const maxR=Math.max(...coins.map(c=>(EURO_COINS[c]||EURO_COINS[100]).r));
+  const rowW=per*(maxR*2)+(per-1)*gap, x0=(w-rowW)/2+maxR, y0=h/2-((rows-1)*(maxR*2+10))/2;
   coins.forEach((c,i)=>{ const col=i%per, row=Math.floor(i/per);
-    const x=x0+col*(r*2+gap), y=y0+row*(r*2+10);
-    g.fillStyle = c>=100?'#FFD24A':'#D9DCE6'; g.strokeStyle=C_NAVY; g.lineWidth=3;
-    g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); g.stroke();
-    g.fillStyle=C_NAVY; g.font='bold 13px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(coinLabel(c),x,y); });
+    const x=x0+col*(maxR*2+gap), y=y0+row*(maxR*2+10);
+    drawEuroCoin(g,x,y,c); });
 }
 function geldOpts(total){ const opts=new Set([formatMoney(total)]); let t=0;
   while(opts.size<3 && t<50){ t++; const d=total+pick([-200,-100,-50,50,100,200]); if(d>=50) opts.add(formatMoney(d)); }
@@ -1133,7 +1161,7 @@ function genGeldMunten(progress){
   progress = progress||0;
   // pool: begin/lage progress = enkel euro's, later komen centen erbij
   const allowCents = semester===2 && progress>=0.55;
-  const pool = allowCents ? [50,100,200] : [100,200];
+  const pool = allowCents ? [10,20,50,100,200] : [100,200];
   // aantal munten: 1 -> 2 -> 3 -> 4 naarmate progress stijgt
   let n;
   if(progress<0.2) n=1;
