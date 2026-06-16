@@ -1152,8 +1152,9 @@ function drawCoins(g,w,h,coins){
     const x=x0+col*(maxR*2+gap), y=y0+row*(maxR*2+10);
     drawEuroCoin(g,x,y,c); });
 }
-function geldOpts(total){ const opts=new Set([formatMoney(total)]); let t=0;
-  while(opts.size<3 && t<50){ t++; const d=total+pick([-200,-100,-50,50,100,200]); if(d>=50) opts.add(formatMoney(d)); }
+function geldOpts(total, eurosOnly){ const opts=new Set([formatMoney(total)]); let t=0;
+  const steps = eurosOnly ? [-200,-100,100,200] : [-200,-100,-50,50,100,200];
+  while(opts.size<3 && t<50){ t++; const d=total+pick(steps); if(d>=(eurosOnly?100:50)) opts.add(formatMoney(d)); }
   while(opts.size<3) opts.add(formatMoney(total+100*(opts.size+1)));
   return [...opts].sort(()=>Math.random()-0.5); }
 // munten tellen — bouwt op met progress (0..1): 1 munt euro's -> 3 munten incl. centen
@@ -1200,12 +1201,40 @@ function genGeldVraagstuk(progress){
     '<div class="lees-q">Tel alle prijzen samen.<br>Hoeveel moet '+w.wie+' betalen?</div>';
   return { prompt, lees:true, options:geldOpts(total), correct:formatMoney(total), wide:true };
 }
+// LJ1: muntherkenning + hele euro's samentellen (geen centen, geen vraagstukken)
+function genGeldLJ1(progress){
+  progress = progress||0;
+  if(semester===1){
+    // S1 begin: 1 muntje herkennen
+    const groups = [
+      {coins:[1,2,5], cents:true},
+      {coins:[10,20,50], cents:true},
+      {coins:[100,200], cents:false}
+    ];
+    const grp = pick(groups), c=pick(grp.coins);
+    const opts=new Set([coinLabel(c)]); for(const x of grp.coins) opts.add(coinLabel(x));
+    return { prompt:'Welk muntje is dit?', draw:(g,w,h)=>drawCoins(g,w,h,[c]),
+      options:[...opts].sort(()=>Math.random()-0.5), correct:coinLabel(c), wide:false };
+  }
+  // S2 einde: hele euro's samentellen, max 3 munten, alleen 1€ en 2€
+  let n;
+  if(progress<0.3) n=1;
+  else if(progress<0.7) n=2;
+  else n=3;
+  const pool=[100,200], coins=[]; let total=0;
+  for(let i=0;i<n;i++){ const c=pick(pool); coins.push(c); total+=c; }
+  if(n===1){
+    return { prompt:'Welk muntje is dit?', draw:(g,w,h)=>drawCoins(g,w,h,coins),
+      options:['1 euro','2 euro','5 euro'].sort(()=>Math.random()-0.5),
+      correct:formatMoney(total), wide:false };
+  }
+  return { prompt:'Hoeveel euro is dit samen?', draw:(g,w,h)=>drawCoins(g,w,h,coins),
+    options:geldOpts(total,true), correct:formatMoney(total), wide:false };
+}
 function genGeld(progress){
   progress = progress||0;
-  // Vraag 1-3: enkel munten tellen (makkelijk visueel).
-  // Vraag 4-6: mix munten + simpel vraagstuk (2 items hele euro's).
-  // Vraag 7-8: vraagstuk meerkeuze (3 items, kan centen bevatten).
-  // Vraag 9-10: invul-oefening met vakjes (... + ... + ... = ...).
+  if(level<=1) return genGeldLJ1(progress);
+  // LJ2+: opbouw van makkelijk -> moeilijk binnen de beam
   if(progress<0.3) return genGeldMunten(progress);
   if(progress<0.55) return Math.random()<0.5 ? genGeldMunten(progress) : genGeldVraagstuk(progress);
   return genGeldVraagstuk(progress);
