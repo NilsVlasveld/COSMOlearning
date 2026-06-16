@@ -1701,6 +1701,8 @@ const upEl=document.getElementById('up'), upcard=document.getElementById('upcard
 document.getElementById('ubtn').onclick=openUpgrades;
 document.getElementById('name').onclick=()=>{ if(mode==='hub' && !mg.classList.contains('show') && !upEl.classList.contains('show')) showStart(true); };
 function openUpgrades(){ paused=true; upgradeBadge=false; updateUfoBtn(); buildUpgradePanel(); upEl.classList.add('show'); }
+// herbouw het paneel met behoud van scroll-positie
+function refreshGarage(){ const sc=upcard.querySelector('.garage-scroll'); const top=sc?sc.scrollTop:0; buildUpgradePanel(); const sc2=upcard.querySelector('.garage-scroll'); if(sc2) sc2.scrollTop=top; }
 function closeUpgrades(){ upEl.classList.remove('show'); paused=false; last=performance.now(); }
 function drawModelThumb(c,id){
   const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height);
@@ -1752,10 +1754,10 @@ function buildUpgradePanel(){
     '<div class="garage-scroll">'+picker+rows+
     '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button></div>';
   MODELS.forEach(m=>{ const c=upcard.querySelector('.ufothumb[data-m="'+m.id+'"]'); if(c) drawModelThumb(c,m.id); });
-  upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ if(c.dataset.unl!=='1') return; ufoModel=c.dataset.m; scheduleSave(); buildUpgradePanel(); });
-  upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; equip.diamond=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } else if(k==='lights'){ lightsColor=b.dataset.c; } scheduleSave(); buildUpgradePanel(); });
-  upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); buildUpgradePanel(); });
-  upcard.querySelectorAll('.stylechip').forEach(b=>b.onclick=()=>{ style[b.dataset.sk]=b.dataset.si; scheduleSave(); buildUpgradePanel(); });
+  upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ if(c.dataset.unl!=='1') return; ufoModel=c.dataset.m; scheduleSave(); refreshGarage(); });
+  upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; equip.diamond=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } else if(k==='lights'){ lightsColor=b.dataset.c; } scheduleSave(); refreshGarage(); });
+  upcard.querySelectorAll('.togglebtn').forEach(b=>b.onclick=()=>{ const k=b.dataset.t; equip[k]=!equip[k]; applyEquip(); scheduleSave(); refreshGarage(); });
+  upcard.querySelectorAll('.stylechip').forEach(b=>b.onclick=()=>{ style[b.dataset.sk]=b.dataset.si; scheduleSave(); refreshGarage(); });
   document.getElementById('upclose').onclick=closeUpgrades;
   drawUfoPreview();
 }
