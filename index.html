@@ -1128,10 +1128,19 @@ function geldOpts(total){ const opts=new Set([formatMoney(total)]); let t=0;
   while(opts.size<3 && t<50){ t++; const d=total+pick([-200,-100,-50,50,100,200]); if(d>=50) opts.add(formatMoney(d)); }
   while(opts.size<3) opts.add(formatMoney(total+100*(opts.size+1)));
   return [...opts].sort(()=>Math.random()-0.5); }
-// munten tellen (bestaande oefening)
-function genGeldMunten(){
-  const pool = semester===1 ? [100,200] : [50,100,200];
-  const n = semester===1 ? ri(1,3) : ri(2,4);
+// munten tellen — bouwt op met progress (0..1): 1 munt euro's -> 3 munten incl. centen
+function genGeldMunten(progress){
+  progress = progress||0;
+  // pool: begin/lage progress = enkel euro's, later komen centen erbij
+  const allowCents = semester===2 && progress>=0.55;
+  const pool = allowCents ? [50,100,200] : [100,200];
+  // aantal munten: 1 -> 2 -> 3 -> 4 naarmate progress stijgt
+  let n;
+  if(progress<0.2) n=1;
+  else if(progress<0.45) n=2;
+  else if(progress<0.75) n=3;
+  else n=4;
+  if(semester===1) n=Math.min(n,3); // semester 1 blijft milder
   const coins=[]; let total=0; for(let i=0;i<n;i++){ const c=pick(pool); coins.push(c); total+=c; }
   return { prompt:'Hoeveel geld is dit?', draw:(g,w,h)=>drawCoins(g,w,h,coins), options:geldOpts(total), correct:formatMoney(total), wide:true };
 }
@@ -1142,17 +1151,37 @@ const GELD_WINKELS=[
   {naam:'de winkel', wie:'Mama', items:[['melk',100],['een brood',250],['kaas',300],['appels',200],['een fles sap',150],['eieren',220]]},
   {naam:'de dierenwinkel', wie:'Lou', items:[['hondenbrokken',600],['een bot',250],['een speelbal',200],['vissenvoer',350]]}
 ];
-function genGeldVraagstuk(){
-  const w=pick(GELD_WINKELS), n=semester===1?2:3;
-  let pool=w.items.filter(it=> semester===1 ? it[1]%100===0 : true); if(pool.length<n) pool=w.items.slice();
+// winkel-vraagstuk — bouwt op: 2 items hele euro's -> 3 items met centen
+// 'fill' modus (invul-vakjes) komt enkel bij de laatste paar vragen
+function genGeldVraagstuk(progress){
+  progress = progress||0;
+  const w=pick(GELD_WINKELS);
+  const n = progress<0.7 ? 2 : 3;                // 2 items tot ~vraag 7, daarna 3
+  const eurosOnly = semester===1 || progress<0.7; // semester 1: altijd hele euro's; semester 2: vanaf ~vraag 8 centen
+  let pool=w.items.filter(it=> eurosOnly ? it[1]%100===0 : true); if(pool.length<n) pool=w.items.slice();
   const chosen=[], used=new Set();
   while(chosen.length<n && used.size<pool.length){ const it=pick(pool); if(!used.has(it[0])){ used.add(it[0]); chosen.push(it); } }
   let total=0; chosen.forEach(it=>total+=it[1]);
   const lijst=chosen.map(it=>'• '+it[0]+' ('+formatMoney(it[1])+')').join('<br>');
-  const blanks=chosen.map(it=>it[1]).concat(total);
-  return { fill:true, lijst:(w.wie+' koopt bij '+w.naam+':<br>'+lijst), blanks, total };
+  // Invul-vakjes pas vanaf vraag 8 (progress>=0.75); daarvoor: gewone meerkeuze-totaal
+  if(progress>=0.75 && semester===2){
+    const blanks=chosen.map(it=>it[1]).concat(total);
+    return { fill:true, lijst:(w.wie+' koopt bij '+w.naam+':<br>'+lijst), blanks, total };
+  }
+  const prompt='<div class="lees-text">'+w.wie+' koopt bij '+w.naam+':<br>'+lijst+'</div>'+
+    '<div class="lees-q">Tel alle prijzen samen.<br>Hoeveel moet '+w.wie+' betalen?</div>';
+  return { prompt, lees:true, options:geldOpts(total), correct:formatMoney(total), wide:true };
 }
-function genGeld(){ return Math.random() < (semester===1?0.45:0.6) ? genGeldVraagstuk() : genGeldMunten(); }
+function genGeld(progress){
+  progress = progress||0;
+  // Vraag 1-3: enkel munten tellen (makkelijk visueel).
+  // Vraag 4-6: mix munten + simpel vraagstuk (2 items hele euro's).
+  // Vraag 7-8: vraagstuk meerkeuze (3 items, kan centen bevatten).
+  // Vraag 9-10: invul-oefening met vakjes (... + ... + ... = ...).
+  if(progress<0.3) return genGeldMunten(progress);
+  if(progress<0.55) return Math.random()<0.5 ? genGeldMunten(progress) : genGeldVraagstuk(progress);
+  return genGeldVraagstuk(progress);
+}
 
 // ===== TELLEN (hoeveelheden) =====
 function drawCountItems(g,w,h,n){
@@ -1282,12 +1311,13 @@ function genRuimtelijk(){
   return genBlokken();
 }
 
-function makeQuestion(subject){
+function makeQuestion(subject, progress){
+  progress = progress||0;
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
   if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
   if(subject==='klok') return genKlok();
   if(subject==='vormen') return genVormen();
-  if(subject==='geld') return genGeld();
+  if(subject==='geld') return genGeld(progress);
   if(subject==='tellen') return genTellen();
   if(subject==='ruimte') return genRuimte();
   if(subject==='ruimtelijk') return genRuimtelijk();
@@ -1295,7 +1325,8 @@ function makeQuestion(subject){
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ showResult(); return; }
-  const q=makeQuestion(st.subject); const s=SUBJECTS[st.subject];
+  const progress = st.total>1 ? (st.i/(st.total-1)) : 1; // 0 (eerste vraag) → 1 (laatste)
+  const q=makeQuestion(st.subject, progress); const s=SUBJECTS[st.subject];
   const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
