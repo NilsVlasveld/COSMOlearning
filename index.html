@@ -481,7 +481,38 @@ function drawUFO(g,scale){
   g.save(); g.scale(scale,scale); g.lineJoin='round'; g.lineCap='round';
   if(equip.wings){ g.fillStyle=ufoBody(); g.strokeStyle=C_NAVY; g.lineWidth=3; drawWing(g,1,style.wings); drawWing(g,-1,style.wings); }
   (MODELS_BY_ID[ufoModel]||MODELS_BY_ID.klassiek).draw(g);
+  if(feat.shoot) drawGuns(g, style.shoot);
   g.restore();
+}
+function drawGuns(g, sty){
+  g.lineJoin='round'; g.strokeStyle=C_NAVY; g.lineWidth=2.5;
+  for(const s of [-1, 1]){
+    g.save(); g.scale(s, 1);
+    if(sty==='vlammetjes'){
+      // donker metalen buisje + vlam-mondstuk
+      g.fillStyle='#4A4452'; roundRect(g,52,8,22,10,4); g.fill(); g.stroke();
+      g.fillStyle='#1E1B5E'; g.beginPath(); g.arc(74,13,4,0,6.2832); g.fill();
+      g.fillStyle='rgba(255,107,53,.9)'; g.beginPath(); g.ellipse(80,13,7,5,0,0,6.2832); g.fill();
+      g.fillStyle='rgba(255,210,74,.95)'; g.beginPath(); g.ellipse(82,13,4,3,0,0,6.2832); g.fill();
+    } else if(sty==='raketjes'){
+      // raketwerper - blokvormig met 2 buizen
+      g.fillStyle='#7A6FAB'; roundRect(g,50,4,26,18,4); g.fill(); g.stroke();
+      // 2 buisopeningen
+      g.fillStyle='#1E1B5E';
+      g.beginPath(); g.arc(72,10,3.5,0,6.2832); g.fill();
+      g.beginPath(); g.arc(72,17,3.5,0,6.2832); g.fill();
+      // raketneuzen zichtbaar
+      g.fillStyle='#F58BB0';
+      g.beginPath(); g.arc(72,10,2,0,6.2832); g.fill();
+      g.beginPath(); g.arc(72,17,2,0,6.2832); g.fill();
+    } else {
+      // klassiek - simpel kanonnetje
+      g.fillStyle='#9D99C2'; roundRect(g,54,9,20,9,3); g.fill(); g.stroke();
+      g.fillStyle='#1E1B5E'; g.beginPath(); g.arc(74,13.5,3,0,6.2832); g.fill();
+      g.fillStyle='#FFD24A'; g.beginPath(); g.arc(74,13.5,1.8,0,6.2832); g.fill();
+    }
+    g.restore();
+  }
 }
 // ---- UFO-modellen ----
 function drawModelClassic(g){
