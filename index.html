@@ -1045,7 +1045,7 @@ function openMiniGame(b){
   b.cool=2.8; paused=true; ufo.vx*=0.2; ufo.vy*=0.2;
   const base=b.score||0;                      // al juist beantwoord
   const total=base>0 ? (10-base) : 10;        // herspelen = enkel de overgebleven fouten
-  mgState={ beam:b, subject:b.subject, total, i:0, earned:0, base };
+  mgState={ beam:b, subject:b.subject, total, i:0, earned:0, base, asked:new Set() };
   nextQuestion(); mg.classList.add('show');
 }
 // moeilijkheidsgraad schaalt met gekozen leerjaar (level 1..6)
@@ -1536,7 +1536,14 @@ function makeQuestion(subject, progress){
 }
 function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ showResult(); return; }
   const progress = st.total>1 ? (st.i/(st.total-1)) : 1; // 0 (eerste vraag) → 1 (laatste)
-  const q=makeQuestion(st.subject, progress); const s=SUBJECTS[st.subject];
+  // genereer een vraag, vermijd herhalingen binnen deze sessie (max 25 pogingen)
+  let q;
+  for(let tries=0; tries<25; tries++){
+    q = makeQuestion(st.subject, progress);
+    const id = (q.prompt||q.lijst||'')+'|'+(q.correct!=null?q.correct:(q.total!=null?q.total:''));
+    if(!st.asked.has(id)){ st.asked.add(id); break; }
+  }
+  const s=SUBJECTS[st.subject];
   const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
