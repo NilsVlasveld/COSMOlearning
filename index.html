@@ -346,14 +346,16 @@ const UPGRADES=[
     styles:[{id:'lijntjes',label:'Lijntjes'},{id:'sterren',label:'Sterren'},{id:'bollen',label:'Bollen'}]},
   {at:125,key:'wings', type:'toggle', short:'Vleugels', icon:'🪽', name:'Ruimtevleugels', desc:'Vleugels aan je UFO',
     styles:[{id:'rond',label:'Rond'},{id:'puntig',label:'Puntig'},{id:'echt',label:'Echt'}]},
+  {at:150,key:'shoot', type:'toggle', noToggle:true, short:'Schoten', icon:'🔫', name:'Schoten', desc:'Kies hoe je UFO schiet',
+    styles:[{id:'klassiek',label:'Klassiek'},{id:'vlammetjes',label:'Vlammetjes'},{id:'raketjes',label:'Raketjes'}]},
   {at:175,key:'dome', type:'color', cols:DOME_COLORS,   short:'Koepelkleur', icon:'🫧', name:'Koepelkleur', desc:'Kleur van de cockpit'},
   {at:200,key:'turbo', type:'toggle', short:'Turbo', icon:'⚡', name:'Turbo-boost', desc:'Sneller vliegen + vlammen',
     styles:[{id:'vlam',label:'Vlam'},{id:'bliksem',label:'Bliksem'},{id:'regenboog',label:'Regenboog'}]},
   {at:250,key:'gold', type:'toggle', short:'Gouden UFO', icon:'👑', name:'Gouden UFO', desc:'Een glanzende gouden UFO'}
 ];
-const feat={color:false,trail:false,wings:false,turbo:false,gold:false,dome:false}; // ontgrendeld (door sterren)
-const equip={trail:false,wings:false,turbo:false,gold:false};                       // toggles die nu opstaan
-const style={trail:'sterren',wings:'puntig',turbo:'vlam'};                          // gekozen variant per optie
+const feat={color:false,trail:false,wings:false,turbo:false,gold:false,dome:false,shoot:false}; // ontgrendeld (door sterren)
+const equip={trail:false,wings:false,turbo:false,gold:false,shoot:true};            // toggles die nu opstaan (shoot altijd aan)
+const style={trail:'sterren',wings:'puntig',turbo:'vlam',shoot:'klassiek'};         // gekozen variant per optie
 function ufoBody(){ return equip.gold ? '#F2C84B' : ufo.color; }
 function ufoDome(){ return ufo.dome; }
 function applyEquip(){ curMaxV = equip.turbo ? 560 : 420; }
@@ -740,6 +742,26 @@ function drawAlien(g,x,y,r,col,sc){
   g.strokeStyle='#1E1B5E'; g.lineWidth=2; g.beginPath(); g.arc(0,r*0.45,r*0.3,0.15,Math.PI-0.15); g.stroke();
   g.restore();
 }
+function drawBullet(g,b,sty){
+  const ang=Math.atan2(b.vy,b.vx); g.save(); g.translate(b.x,b.y); g.rotate(ang); g.lineJoin='round'; g.lineCap='round';
+  if(sty==='vlammetjes'){
+    g.fillStyle='rgba(255,90,30,.55)'; g.beginPath(); g.ellipse(-6,0,14,7,0,0,6.2832); g.fill();
+    g.fillStyle='rgba(255,160,40,.85)'; g.beginPath(); g.ellipse(-2,0,11,5,0,0,6.2832); g.fill();
+    g.fillStyle='#FFE7A0'; g.beginPath(); g.ellipse(2,0,7,3,0,0,6.2832); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.ellipse(4,0,3,1.5,0,0,6.2832); g.fill();
+  } else if(sty==='raketjes'){
+    g.fillStyle='rgba(255,170,40,.9)'; g.beginPath(); g.ellipse(-9,0,5,2.5,0,0,6.2832); g.fill();
+    g.fillStyle='#33C9C6'; g.strokeStyle=C_NAVY; g.lineWidth=1.4;
+    g.beginPath(); g.moveTo(-7,-3); g.lineTo(-10,-6); g.lineTo(-6,-2); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-7,3); g.lineTo(-10,6); g.lineTo(-6,2); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle='#F58BB0';
+    g.beginPath(); g.moveTo(8,0); g.lineTo(4,-3.5); g.lineTo(-7,-3.5); g.lineTo(-7,3.5); g.lineTo(4,3.5); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(-1,0,1.7,0,6.2832); g.fill();
+  } else { // klassiek
+    g.fillStyle='#FFE7A0'; g.strokeStyle=C_NAVY; g.lineWidth=2; g.beginPath(); g.arc(0,0,5,0,6.2832); g.fill(); g.stroke();
+  }
+  g.restore();
+}
 function drawBalloon(g,x,y,r,col){
   g.save(); g.translate(x,y); g.strokeStyle='#1E1B5E'; g.lineWidth=2;
   g.beginPath(); g.moveTo(0,r); g.lineTo(0,r+r*0.7); g.stroke();
@@ -856,7 +878,7 @@ function renderArcade(){
   for(const p of arcade.pops){ const a=p.life/0.5; ctx.globalAlpha=a; ctx.strokeStyle=p.col; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(p.x,p.y,(1-a)*26+6,0,6.2832); ctx.stroke();
     ctx.fillStyle='#FFD24A'; ctx.font='700 16px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.fillText('+1★',p.x,p.y-12-(1-a)*14); ctx.globalAlpha=1; }
-  for(const b of arcade.bullets){ ctx.fillStyle='#FFE7A0'; ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,6.2832); ctx.fill(); ctx.stroke(); }
+  for(const b of arcade.bullets) drawBullet(ctx, b, style.shoot);
   if(!(ufo.invuln>0 && Math.floor(ufo.invuln*16)%2)){ ctx.save(); ctx.translate(ufo.x,ufo.y); const bank=Math.max(-0.28,Math.min(0.28,ufo.vx/curMaxV*0.4)); ctx.rotate(bank); drawUFO(ctx,0.6); ctx.restore(); }
   const sec=Math.ceil(arcade.time), bw=Math.min(W*0.7,280);
   ctx.fillStyle='rgba(30,27,94,.82)'; roundRect(ctx,W/2-bw/2,16,bw,32,16); ctx.fill();
@@ -1577,10 +1599,11 @@ function buildUpgradePanel(){
       continue;
     }
     const on=equip[u.key];
-    const ctrl = unlocked ? '<button class="togglebtn'+(on?' on':'')+'" data-t="'+u.key+'">'+(on?'Aan':'Uit')+'</button>' : lock;
+    const ctrl = unlocked ? (u.noToggle ? '' : '<button class="togglebtn'+(on?' on':'')+'" data-t="'+u.key+'">'+(on?'Aan':'Uit')+'</button>') : lock;
     const sub = unlocked ? u.desc : (u.at+' ★ nodig');
     let chips='';
-    if(unlocked && on && u.styles){ chips='<div class="stylechips">'+u.styles.map(s=>'<button class="stylechip'+(style[u.key]===s.id?' sel':'')+'" data-sk="'+u.key+'" data-si="'+s.id+'">'+s.label+'</button>').join('')+'</div>'; }
+    const showChips = unlocked && u.styles && (u.noToggle || on);
+    if(showChips){ chips='<div class="stylechips">'+u.styles.map(s=>'<button class="stylechip'+(style[u.key]===s.id?' sel':'')+'" data-sk="'+u.key+'" data-si="'+s.id+'">'+s.label+'</button>').join('')+'</div>'; }
     rows+='<div class="opt'+(unlocked?'':' locked')+'">'+
       '<div class="opt-ic">'+u.icon+'</div>'+
       '<div class="opt-info"><div class="opt-name">'+u.name+'</div><div class="opt-req">'+sub+'</div>'+chips+'</div>'+
