@@ -104,6 +104,10 @@
   /* UFO-garage */
   .ufoprev { display:block; margin:4px auto 14px; width:240px; max-width:82%; height:auto;
     background:rgba(20,18,70,.35); border-radius:18px; }
+  /* garage: preview altijd zichtbaar, alleen opties scrollen */
+  #up .card { display:flex; flex-direction:column; max-height:92vh; overflow:hidden; padding-bottom:18px; }
+  #up .card > .mg-top, #up .card > .ufoprev { flex:none; }
+  .garage-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 2px; -webkit-overflow-scrolling:touch; }
   .opt { display:flex; align-items:center; gap:11px; text-align:left; background:rgba(255,255,255,.1);
     border-radius:14px; padding:10px 12px; margin-bottom:9px; }
   .opt.locked { opacity:.6; }
@@ -1745,9 +1749,8 @@ function buildUpgradePanel(){
   const picker = '<div class="opt" style="display:block"><div class="opt-name" style="margin-bottom:7px">🛸 Kies je UFO</div><div class="ufothumbs">'+thumbs+'</div></div>';
   upcard.innerHTML='<div class="mg-top"><span class="pill">🛸 UFO garage</span><span class="pill">Totaal: '+points+' ★</span></div>'+
     '<canvas id="ufoprev" class="ufoprev" width="240" height="150"></canvas>'+
-    picker+
-    rows+
-    '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button>';
+    '<div class="garage-scroll">'+picker+rows+
+    '<button class="btn" id="upclose" style="margin-top:8px">Klaar! 🚀</button></div>';
   MODELS.forEach(m=>{ const c=upcard.querySelector('.ufothumb[data-m="'+m.id+'"]'); if(c) drawModelThumb(c,m.id); });
   upcard.querySelectorAll('.ufothumb').forEach(c=>c.onclick=()=>{ if(c.dataset.unl!=='1') return; ufoModel=c.dataset.m; scheduleSave(); buildUpgradePanel(); });
   upcard.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ const k=b.dataset.ck; if(k==='color'){ ufo.color=b.dataset.c; equip.gold=false; equip.diamond=false; } else if(k==='dome'){ ufo.dome=b.dataset.c; } else if(k==='lights'){ lightsColor=b.dataset.c; } scheduleSave(); buildUpgradePanel(); });
