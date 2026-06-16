@@ -1070,12 +1070,12 @@ function q_LJ1_S1(){ // S1: getalbegrip & rekenen tot 10
     default:{ const a=ri(1,9); return {q:a+' + ? = 10', ans:10-a}; }                     // tienvriendjes
   }
 }
-function q_LJ1_S2(){ // S2: rekenen tot 20, met brug over het tiental
+function q_LJ1_S2(){ // S2: rekenen tot 23, met brug over het tiental
   switch(ri(1,4)){
-    case 1: { const a=ri(11,17), b=ri(1,19-a); return {q:a+' + '+b+' = ?', ans:a+b}; }  // optellen tot 20
-    case 2: { let a,b; do{ a=ri(5,9); b=ri(2,9); }while(a+b<=10||a+b>18); return {q:a+' + '+b+' = ?', ans:a+b}; } // brug over 10
-    case 3: { const a=ri(12,20), b=ri(1,a-1); return {q:a+' − '+b+' = ?', ans:a-b}; }   // aftrekken tot 20
-    default:{ const t=ri(13,20), a=ri(2,t-2); return {q:a+' + ? = '+t, ans:t-a}; }       // aanvullen tot 20
+    case 1: { const a=ri(11,20), b=ri(1,23-a); return {q:a+' + '+b+' = ?', ans:a+b}; }  // optellen tot 23
+    case 2: { let a,b; do{ a=ri(5,9); b=ri(3,9); }while(a+b<=10||a+b>22); return {q:a+' + '+b+' = ?', ans:a+b}; } // brug over 10 (tot 22)
+    case 3: { const a=ri(12,23), b=ri(1,a-1); return {q:a+' − '+b+' = ?', ans:a-b}; }   // aftrekken tot 23
+    default:{ const t=ri(13,23), a=ri(2,t-2); return {q:a+' + ? = '+t, ans:t-a}; }       // aanvullen tot 23
   }
 }
 // Leerjaar 2
@@ -1255,7 +1255,77 @@ const WO_Q=[
   {lv:4, q:'Waarmee ademen vissen onder water?', a:['Met kieuwen','Met longen','Met hun staart'], c:'Met kieuwen'},
   {lv:4, q:'Wat noemen we bevroren water?', a:['IJs','Stoom','Modder'], c:'IJs'},
   {lv:4, q:'Welk dier is het grootste op aarde?', a:['De blauwe vinvis','De olifant','De giraf'], c:'De blauwe vinvis'},
-  {lv:4, q:'Wat helpt om zware dingen te laten rollen?', a:['Een wiel','Een doos','Een touw'], c:'Een wiel'}
+  {lv:4, q:'Wat helpt om zware dingen te laten rollen?', a:['Een wiel','Een doos','Een touw'], c:'Een wiel'},
+  // === Extra lv1 (LJ1 begin) — lichaam, dieren, dagdelen, kleuren, eenvoudig ===
+  {lv:1, q:'Welk dier blaft?', a:['De hond','De kat','De koe'], c:'De hond'},
+  {lv:1, q:'Welk dier zegt "boe"?', a:['De koe','De kat','De vogel'], c:'De koe'},
+  {lv:1, q:'Welk dier zegt "kwak"?', a:['De eend','De hond','De kip'], c:'De eend'},
+  {lv:1, q:'Hoeveel handen heb jij?', a:['2','1','4'], c:'2'},
+  {lv:1, q:'Hoeveel vingers heb je aan één hand?', a:['5','4','10'], c:'5'},
+  {lv:1, q:'Hoeveel voeten heb jij?', a:['2','4','3'], c:'2'},
+  {lv:1, q:'Welke kleur heeft de zon meestal?', a:['Geel','Blauw','Bruin'], c:'Geel'},
+  {lv:1, q:'Welke kleur heeft sneeuw?', a:['Wit','Zwart','Groen'], c:'Wit'},
+  {lv:1, q:'Welke kleur heeft een tomaat?', a:['Rood','Blauw','Paars'], c:'Rood'},
+  {lv:1, q:'Wat eten we als ontbijt?', a:['Een boterham','Soep','Sla'], c:'Een boterham'},
+  {lv:1, q:'Waarmee proef je?', a:['Met je tong','Met je oren','Met je voeten'], c:'Met je tong'},
+  {lv:1, q:'Waarmee voel je of iets warm is?', a:['Met je handen','Met je oren','Met je neus'], c:'Met je handen'},
+  {lv:1, q:'Wat draag je als het regent?', a:['Een jas','Een zwembroek','Pyjama'], c:'Een jas'},
+  {lv:1, q:'Wat gebruik je om te schrijven?', a:['Een potlood','Een lepel','Een vork'], c:'Een potlood'},
+  {lv:1, q:'Wat is groter: een muis of een olifant?', a:['Een olifant','Een muis','Even groot'], c:'Een olifant'},
+  {lv:1, q:'Waarmee eet je soep?', a:['Met een lepel','Met een vork','Met een mes'], c:'Met een lepel'},
+  {lv:1, q:'Welk dier kan zwemmen?', a:['Een vis','Een vogel','Een paard'], c:'Een vis'},
+  // === Extra lv2 (LJ1 einde) — weer, seizoenen, dieren+jongen, beroepen, verkeer ===
+  {lv:2, q:'Wat doe je als het sneeuwt?', a:['Een sneeuwpop maken','Zwemmen','Op het strand spelen'], c:'Een sneeuwpop maken'},
+  {lv:2, q:'In welk seizoen gaan we naar het strand?', a:['De zomer','De winter','De herfst'], c:'De zomer'},
+  {lv:2, q:'Hoe heet het jong van een kat?', a:['Een kitten','Een puppy','Een kuiken'], c:'Een kitten'},
+  {lv:2, q:'Hoe heet het jong van een kip?', a:['Een kuiken','Een puppy','Een veulen'], c:'Een kuiken'},
+  {lv:2, q:'Hoe heet het jong van een paard?', a:['Een veulen','Een biggetje','Een kalfje'], c:'Een veulen'},
+  {lv:2, q:'Hoe heet het jong van een koe?', a:['Een kalfje','Een veulen','Een lammetje'], c:'Een kalfje'},
+  {lv:2, q:'Wie verzorgt zieke mensen?', a:['De dokter','De bakker','De boer'], c:'De dokter'},
+  {lv:2, q:'Wie brengt brieven en pakjes?', a:['De postbode','De bakker','De boer'], c:'De postbode'},
+  {lv:2, q:'Wat moet je dragen op de fiets?', a:['Een helm','Een muts','Een hoed'], c:'Een helm'},
+  {lv:2, q:'Wat doe je voor je oversteekt?', a:['Links en rechts kijken','Lopen zonder kijken','Springen'], c:'Links en rechts kijken'},
+  {lv:2, q:'Wat eet een muis graag?', a:['Kaas','Vlees','Sla'], c:'Kaas'},
+  {lv:2, q:'Wanneer worden de dagen langer?', a:['In de lente','In de winter','In de herfst'], c:'In de lente'},
+  {lv:2, q:'Wat heb je nodig om plantjes te laten groeien?', a:['Water','Zand','Snoep'], c:'Water'},
+  {lv:2, q:'Welk dier heeft pluimen?', a:['De vogel','De hond','De vis'], c:'De vogel'},
+  {lv:2, q:'Welk dier heeft schubben?', a:['De vis','De hond','De koe'], c:'De vis'},
+  // === Extra lv3 (LJ2 begin) — leefomgeving, plantdelen, gezond, gemeente, materialen ===
+  {lv:3, q:'Waar leeft een ijsbeer?', a:['Op het ijs','In de woestijn','In de tropen'], c:'Op het ijs'},
+  {lv:3, q:'Waar leeft een kameel?', a:['In de woestijn','Op het ijs','In de zee'], c:'In de woestijn'},
+  {lv:3, q:'Waar leeft een dolfijn?', a:['In de zee','In het bos','In de woestijn'], c:'In de zee'},
+  {lv:3, q:'Welk deel van een plant zit boven de grond?', a:['De bladeren','De wortels','De aarde'], c:'De bladeren'},
+  {lv:3, q:'Wat hebben planten nodig om voedsel te maken?', a:['Zonlicht','Snoep','Lawaai'], c:'Zonlicht'},
+  {lv:3, q:'Welk eten is het gezondst?', a:['Groenten','Snoep','Frisdrank'], c:'Groenten'},
+  {lv:3, q:'Hoeveel keer per dag eet je best?', a:['3','1','7'], c:'3'},
+  {lv:3, q:'Welke maand komt na januari?', a:['Februari','Maart','December'], c:'Februari'},
+  {lv:3, q:'Welke maand komt voor december?', a:['November','Januari','Mei'], c:'November'},
+  {lv:3, q:'Wie helpt zieke dieren?', a:['De dierenarts','De bakker','De brandweer'], c:'De dierenarts'},
+  {lv:3, q:'Wie zorgt voor de planten in een tuin?', a:['De tuinier','De dokter','De brandweer'], c:'De tuinier'},
+  {lv:3, q:'Welk gereedschap gebruikt een schilder?', a:['Een penseel','Een hamer','Een schaar'], c:'Een penseel'},
+  {lv:3, q:'Van welk materiaal is een fles meestal?', a:['Glas of plastic','Hout','Wol'], c:'Glas of plastic'},
+  {lv:3, q:'Van welk materiaal is een trui meestal?', a:['Wol of katoen','Glas','Metaal'], c:'Wol of katoen'},
+  {lv:3, q:'Wat is een gezond drankje?', a:['Water','Frisdrank','Energiedrank'], c:'Water'},
+  {lv:3, q:'Welke vrucht groeit aan een boom?', a:['Een appel','Een wortel','Een aardappel'], c:'Een appel'},
+  // === Extra lv4 (LJ2 einde) — levenscyclus, drijven/zinken, heelal, machines, sorteren ===
+  {lv:4, q:'Wat komt eerst: een ei of een kip?', a:['Een ei','Een kip','Tegelijk'], c:'Een ei'},
+  {lv:4, q:'Wat groeit uit een eikel?', a:['Een eik','Een wilg','Een paddenstoel'], c:'Een eik'},
+  {lv:4, q:'Welk dier heeft acht armen?', a:['De octopus','De krab','De haai'], c:'De octopus'},
+  {lv:4, q:'Welk dier heeft tanden in zijn bek én haren?', a:['De hond','De vogel','De vis'], c:'De hond'},
+  {lv:4, q:'In welke richting gaat de zon onder?', a:['In het westen','In het oosten','In het zuiden'], c:'In het westen'},
+  {lv:4, q:'Welke richting wijst noord op een kompas?', a:['Naar boven (op de kaart)','Naar rechts','Naar beneden'], c:'Naar boven (op de kaart)'},
+  {lv:4, q:'Wat is harder: hout of staal?', a:['Staal','Hout','Even hard'], c:'Staal'},
+  {lv:4, q:'Welke gereedschap helpt om iets vast te schroeven?', a:['Een schroevendraaier','Een hamer','Een penseel'], c:'Een schroevendraaier'},
+  {lv:4, q:'Hoeveel manen heeft de Aarde?', a:['1','2','0'], c:'1'},
+  {lv:4, q:'Hoe heten alle planeten samen?', a:['Het zonnestelsel','De melkweg','Het heelal'], c:'Het zonnestelsel'},
+  {lv:4, q:'Welk dier is een zoogdier?', a:['De hond','De kip','De vis'], c:'De hond'},
+  {lv:4, q:'Welk dier hoort niet thuis: kip, eend, vis?', a:['Vis','Kip','Eend'], c:'Vis'},
+  {lv:4, q:'Wat gebeurt er met sneeuw bij warmte?', a:['Het smelt','Het wordt harder','Het verdwijnt zomaar'], c:'Het smelt'},
+  {lv:4, q:'Wat doe je met afval?', a:['Sorteren en weggooien','Bewaren als snoep','Opeten'], c:'Sorteren en weggooien'},
+  {lv:4, q:'Welk dier maakt een spinnenweb?', a:['De spin','De bij','De mier'], c:'De spin'},
+  {lv:4, q:'Welk weer hoort bij de herfst?', a:['Veel wind en regen','Veel sneeuw','Heel warm'], c:'Veel wind en regen'},
+  {lv:4, q:'Welk apparaat helpt om eten koud te houden?', a:['De koelkast','De oven','De microgolf'], c:'De koelkast'},
+  {lv:4, q:'Welk dier komt voor in de oceaan?', a:['De dolfijn','De koe','Het paard'], c:'De dolfijn'}
 ];
 function woTier(){ if(level<=1) return semester===1?1:2; if(level===2) return semester===1?3:4; return 4; }
 function genRuimte(){ const tier=woTier();
