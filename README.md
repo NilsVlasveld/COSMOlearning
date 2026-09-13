@@ -1,5 +1,7 @@
 # Cosmo — Ruimteleren 🛸
 
+### 🚀 Speel Cosmo live: **[cosm-olearning.vercel.app](https://cosm-olearning.vercel.app/)**
+
 Een educatief UFO-ruimtespel om te leren **rekenen**, **lezen** en **logisch nadenken**.
 Het kind bestuurt een UFO door de ruimte, vliegt door gekleurde **beams** en lost korte mini-games op.
 Elk juist antwoord = 1 ster. Speel **alle vakken** in een ruimte uit (1 beam per vak) en er opent een **zwart gat** naar een nieuwe ruimte.
