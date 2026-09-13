@@ -81,6 +81,22 @@
   .sum-chip { background:#FFE7A0; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:14px; font-weight:800; font-size:15px; padding:12px 15px; cursor:pointer; }
   .sum-chip:active { transform:scale(.95); }
   .sum-chip.bad { background:#F08A8A; }
+  /* numeriek toetsenbord */
+  .kb-display { background:#fff; color:#1E1B5E; border:3.5px solid #1E1B5E; border-radius:16px;
+    min-height:56px; margin:6px 0 12px; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:34px; padding:6px 12px; }
+  .kb-display.empty .kb-num { color:#9D99C2; }
+  .kb-display.good { background:#7BE0A0; }
+  .kb-display.bad { background:#F08A8A; font-size:22px; }
+  .kb-display.shake { animation:kbshake .35s; }
+  @keyframes kbshake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+  .kb-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px; }
+  .kb-key { background:#FFE7A0; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:14px;
+    font-size:22px; font-weight:800; padding:14px 0; cursor:pointer; transition:transform .1s; }
+  .kb-key:active { transform:scale(.94); }
+  .kb-key.kb-ok { background:#7BE0A0; }
+  .kb-key.kb-del { background:#F4B9CE; }
+  .kb-key:disabled { opacity:.55; cursor:default; }
   #qcanvas { display:block; margin:0 auto; max-width:100%; height:auto; }
   .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
   .answers.wide { flex-direction:column; gap:10px; }
@@ -1603,16 +1619,16 @@ function genRuimtelijk(){
 
 function makeQuestion(subject, progress){
   progress = progress||0;
-  if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
-  if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, options:numOpts(d.ans), correct:String(d.ans), wide:false }; }
+  if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
+  if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, correct:String(d.ans), keyboard:true }; }
   if(subject==='klok') return genKlok();
   if(subject==='vormen') return genVormen();
   if(subject==='geld') return genGeld(progress);
-  if(subject==='tellen') return genTellen();
+  if(subject==='tellen'){ const d=genTellen(); return { ...d, keyboard:true, options:undefined }; }
   if(subject==='ruimte') return genRuimte();
   if(subject==='ruimtelijk') return genRuimtelijk();
   if(subject==='lezen') return genLezen();
-  if(subject==='vraagstukken') return genVraagstuk(progress);
+  if(subject==='vraagstukken'){ const d=genVraagstuk(progress); return { ...d, keyboard:true, options:undefined }; }
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 // ===== VRAAGSTUKKEN — echte rekencontext =====
@@ -1719,6 +1735,7 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
+  if(q.keyboard){ renderKeyboard(q, head); return; }
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
   else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':''))+'">'+q.prompt+'</div>'; }
@@ -1759,6 +1776,39 @@ function renderFill(q, head){
     });
   }
   draw();
+}
+// numeriek toetsenbord: leerling tikt zelf het antwoord
+function renderKeyboard(q, head){
+  let typed=''; const correct=q.correct; const maxLen=Math.max(3, String(correct).length+1);
+  const qhtml = q.draw
+    ? '<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'
+    : '<div class="qbox'+(q.seq?' seq':'')+(q.lees?' lees':'')+'">'+q.prompt+'</div>';
+  const keys=['7','8','9','4','5','6','1','2','3','←','0','OK'];
+  const keysHtml=keys.map(k=>{
+    const cls = k==='OK'?'kb-key kb-ok' : k==='←'?'kb-key kb-del' : 'kb-key';
+    return '<button class="'+cls+'" data-k="'+k+'">'+k+'</button>';
+  }).join('');
+  mgcard.innerHTML=head+qhtml+
+    '<div class="kb-display" id="kbdisp"><span class="kb-num" id="kbnum">?</span></div>'+
+    '<div class="kb-grid">'+keysHtml+'</div>';
+  if(q.draw){ const c=document.getElementById('qcanvas'); if(c){ const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); q.draw(g,c.width,c.height); } }
+  const num=document.getElementById('kbnum'), disp=document.getElementById('kbdisp');
+  function updateDisp(){ num.textContent = typed===''?'?':typed; disp.classList.toggle('empty', typed===''); }
+  function submit(){
+    if(typed===''){ disp.classList.add('shake'); setTimeout(()=>disp.classList.remove('shake'),400); return; }
+    const ok = typed===correct;
+    disp.classList.add(ok?'good':'bad');
+    if(!ok){ num.textContent = typed+' → '+correct; }
+    mgcard.querySelectorAll('.kb-key').forEach(b=>b.disabled=true);
+    if(ok){ mgState.earned+=1; addStars(1); }
+    mgState.i++; setTimeout(nextQuestion, ok?600:1300);
+  }
+  mgcard.querySelectorAll('.kb-key').forEach(btn=>btn.onclick=()=>{
+    const k=btn.dataset.k;
+    if(k==='OK'){ submit(); return; }
+    if(k==='←'){ typed=typed.slice(0,-1); updateDisp(); return; }
+    if(typed.length<maxLen){ typed+=k; updateDisp(); }
+  });
 }
 function showResult(){
   const e=mgState.earned, total=mgState.total, base=mgState.base||0;
