@@ -39,8 +39,8 @@
   #mapbtn { background:rgba(30,27,94,.85); color:#fff; font-weight:600; font-size:13px; border:none;
     padding:7px 13px; border-radius:14px; cursor:pointer; }
   #mapbtn:active { transform:scale(.96); }
-  #mapcanvas { display:block; margin:8px auto; width:100%; max-width:400px; height:auto;
-    background:rgba(20,18,70,.4); border-radius:16px; }
+  #mapcanvas { display:block; margin:8px auto; width:100%; max-width:440px; height:auto;
+    background:rgba(20,18,70,.4); border-radius:16px; cursor:pointer; }
   .map-legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; font-size:12px; margin:4px 0 6px; opacity:.9; }
   .map-legend .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle; border:1.5px solid #1E1B5E; }
   #dimname { left:50%; transform:translateX(-50%); top:14px; opacity:0; transition:opacity .6s;
@@ -289,7 +289,7 @@ function saveState(){
   if(wiping) return;
   try{
     const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, lightsColor, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
-      dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played,score:b.score||0})), bh:d.blackhole.unlocked })) };
+      dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played,score:b.score||0})), bh:d.blackhole.unlocked, visited:!!d.visited })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
 }
@@ -312,24 +312,40 @@ function applySave(data){
       // beam-indeling komt altijd uit DIM_SPECS (1 per vak); herstel enkel 'gespeeld' per vak
       if(Array.isArray(sd.beams)){ const bySub={}; sd.beams.forEach(b=>{ if(b.played) bySub[b.subject]=Math.max(bySub[b.subject]||0, b.score||0); });
         d.beams.forEach(b=>{ if(b.subject in bySub){ b.played=true; b.score=bySub[b.subject]; } else { b.played=false; b.score=0; } }); }
+      if(sd.visited) d.visited=true;
       d.blackhole.unlocked = allPlayed(d); });
+    dims[active].visited=true;
   }
   cur=dims[active];
   return true;
 }
 
-const DIM_SPECS=[
-  { name:'Sterrenstelsel', bg:'#6C6CE8', star:'255,255,255', w:3600, h:2600, rockTint:'#8E8AA8', rockCrater:'#76739A', rockCount:22,
-    beams:[ {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
-      {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
-      {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'} ],
-    blackhole:{x:1900,y:1300,target:1}, portal:{x:2750,y:1500} },
-  { name:'Paarse stelsel', bg:'#3A2A6B', star:'232,208,255', w:3200, h:2400, rockTint:'#5C4F88', rockCrater:'#473C70', rockCount:20,
-    beams:[ {x:520,y:1900,subject:'rekenen'},{x:2600,y:520,subject:'logica'},{x:2750,y:1550,subject:'klok'},
-      {x:1700,y:380,subject:'vormen'},{x:2150,y:1950,subject:'geld'},{x:1300,y:2050,subject:'tellen'},
-      {x:900,y:1100,subject:'ruimte'},{x:2900,y:2150,subject:'lezen'},{x:1150,y:1350,subject:'ruimtelijk'},{x:2300,y:900,subject:'vraagstukken'} ],
-    blackhole:{x:1600,y:1200,target:0}, portal:{x:700,y:700} }
+// Standaard set van beams (10 vakken, verspreid over de ruimte)
+const STD_BEAMS=[
+  {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
+  {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
+  {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'}
 ];
+// 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
+// mapPos: relatieve x,y op de kaart (0-1)
+const DIM_SPECS=[
+  { name:'Blauwe Kern',      bg:'#6C6CE8', star:'255,255,255', rockTint:'#8E8AA8', rockCrater:'#76739A', mapPos:[0.15,0.5], neighbors:[1,2] },
+  { name:'Paarse Nevel',     bg:'#3A2A6B', star:'232,208,255', rockTint:'#5C4F88', rockCrater:'#473C70', mapPos:[0.30,0.22], neighbors:[0,3,4] },
+  { name:'Turquoise Baan',   bg:'#1E5A5C', star:'190,237,235', rockTint:'#2E7A7C', rockCrater:'#1A4547', mapPos:[0.30,0.78], neighbors:[0,4,5] },
+  { name:'Rode Zon',         bg:'#7A2A2A', star:'255,200,200', rockTint:'#A05555', rockCrater:'#6B2222', mapPos:[0.48,0.15], neighbors:[1,6] },
+  { name:'Groene Weide',     bg:'#2E6B3A', star:'200,255,210', rockTint:'#4A8A56', rockCrater:'#1F4A26', mapPos:[0.48,0.50], neighbors:[1,2,6,7] },
+  { name:'Roze Nevel',       bg:'#8B3A6E', star:'255,220,240', rockTint:'#A55A88', rockCrater:'#6B2652', mapPos:[0.48,0.85], neighbors:[2,7] },
+  { name:'Oranje Kroon',     bg:'#B85A1E', star:'255,220,180', rockTint:'#C87A45', rockCrater:'#8A3E12', mapPos:[0.65,0.30], neighbors:[3,4,8] },
+  { name:'Gouden Halo',      bg:'#8A6B1A', star:'255,240,190', rockTint:'#B0893A', rockCrater:'#6B4F0F', mapPos:[0.65,0.70], neighbors:[4,5,8,9] },
+  { name:'IJs Cluster',      bg:'#3D6E8E', star:'230,245,255', rockTint:'#6A97B8', rockCrater:'#2A4F6E', mapPos:[0.82,0.35], neighbors:[6,7,9] },
+  { name:'Diamant Rijk',     bg:'#4A3D6E', star:'240,230,255', rockTint:'#7A6EA0', rockCrater:'#332950', mapPos:[0.82,0.75], neighbors:[7,8] }
+];
+// beams + portal + blackhole voor elk stelsel (gestandaardiseerd)
+DIM_SPECS.forEach((s,i)=>{ s.w=3600; s.h=2600; s.rockCount=20;
+  s.beams=STD_BEAMS.map(b=>({...b}));
+  s.blackhole={x:1900,y:1300,target:-1}; // target=-1 = kies uit onbezochte buren
+  s.portal={x:2750,y:1500};
+});
 function buildDimension(spec){
   const d={ name:spec.name, bg:spec.bg, star:spec.star, w:spec.w, h:spec.h, rockTint:spec.rockTint, rockCrater:spec.rockCrater,
     beams:spec.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,r:54,cool:0,phase:Math.random()*6,played:false,score:0})),
@@ -355,7 +371,7 @@ function makeRock(d){
   return {x,y,r,vx:drift?rnd(-30,30):0,vy:drift?rnd(-30,30):0,rot:rnd(0,6.28),vr:rnd(-0.5,0.5),pts,tint:d.rockTint,crater:d.rockCrater};
 }
 const dims=DIM_SPECS.map(buildDimension);
-let active=0, cur=dims[active];
+let active=0, cur=dims[active]; cur.visited=true;
 
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
 function allPlayed(d){ return d.beams.every(b=>b.played); }
@@ -502,7 +518,15 @@ function update(dt){
 }
 
 function travel(target){
-  active=target; cur=dims[active];
+  // target=-1 -> kies willekeurige onbezochte buur (via visited-set); fallback: eender welk stelsel
+  if(target<0){
+    const visited=new Set(dims.map((d,i)=> d.visited ? i : -1).filter(i=>i>=0));
+    const buren=(DIM_SPECS[active].neighbors||[]).filter(i=>!visited.has(i));
+    if(buren.length) target=pick(buren);
+    else { const alle=DIM_SPECS.map((_,i)=>i).filter(i=>i!==active && !visited.has(i));
+      target = alle.length ? pick(alle) : (active+1)%dims.length; }
+  }
+  active=target; cur=dims[active]; cur.visited=true;
   cur.beams.forEach(b=>{ b.played=false; b.score=0; b.cool=0; }); // nieuwe ruimte: alle vakken weer fris
   cur.blackhole.unlocked=false; cur.blackhole.cool=3; starsHere=0;
   const bh=cur.blackhole; const ang=Math.random()*6.2832;
@@ -1935,63 +1959,91 @@ function openUpgrades(){ paused=true; upgradeBadge=false; updateUfoBtn(); buildU
 const mapEl=document.getElementById('map'), mapcard=document.getElementById('mapcard');
 function openMap(){ paused=true; buildMapPanel(); mapEl.classList.add('show'); }
 function closeMap(){ mapEl.classList.remove('show'); paused=false; last=performance.now(); }
+let mapPositions=[]; // cache van pixel-posities per stelsel
 function buildMapPanel(){
-  const totalVak=cur.beams.length, gespeeld=cur.beams.filter(b=>b.played).length;
-  const perfect=cur.beams.filter(b=>(b.score||0)>=10).length;
-  mapcard.innerHTML='<div class="mg-top"><span class="pill">🗺️ Universum</span><span class="pill">Ruimte '+(active+1)+' / '+dims.length+'</span></div>'+
-    '<canvas id="mapcanvas" width="380" height="240"></canvas>'+
-    '<div class="map-legend"><span><span class="dot" style="background:#FFD24A"></span>jij bent hier</span>'+
+  const bezocht=dims.filter(d=>d.visited).length;
+  mapcard.innerHTML='<div class="mg-top"><span class="pill">🗺️ Universum</span><span class="pill">'+bezocht+' / '+dims.length+' bezocht</span></div>'+
+    '<canvas id="mapcanvas" width="440" height="300"></canvas>'+
+    '<div class="map-legend"><span><span class="dot" style="background:#FFD24A"></span>hier</span>'+
     '<span><span class="dot" style="background:#C58BE8"></span>bezocht</span>'+
-    '<span><span class="dot" style="background:#33C9C6"></span>onbezocht</span></div>'+
-    '<div class="mg-sub">In deze ruimte: <b>'+gespeeld+'/'+totalVak+'</b> vakken gespeeld · <b>'+perfect+'</b> perfect ✓</div>'+
+    '<span><span class="dot" style="background:#33C9C6"></span>buurstelsel</span>'+
+    '<span><span class="dot" style="background:#4A4462"></span>onontdekt</span></div>'+
+    '<div class="mg-sub" id="maphint">Tik op een <b>verbonden stelsel</b> om ernaartoe te reizen 🚀</div>'+
     '<button class="btn" id="mapclose" style="margin-top:8px">Sluiten</button>';
   document.getElementById('mapclose').onclick=closeMap;
   drawUniverseMap();
+  const c=document.getElementById('mapcanvas');
+  c.onclick=(e)=>{ const r=c.getBoundingClientRect(); const scale=c.width/r.width;
+    const mx=(e.clientX-r.left)*scale, my=(e.clientY-r.top)*scale;
+    for(let i=0;i<mapPositions.length;i++){ const p=mapPositions[i];
+      if(Math.hypot(mx-p.x,my-p.y)<28){
+        if(i===active){ toast('Je bent hier al!'); return; }
+        const naburig=(DIM_SPECS[active].neighbors||[]).includes(i);
+        const ontdekt=dims[i].visited;
+        if(naburig || ontdekt){ closeMap(); travel(i); }
+        else { toast('Nog niet ontdekt — reis via een buurstelsel 🌌'); }
+        return;
+      }
+    }
+  };
 }
 function drawUniverseMap(){
   const c=document.getElementById('mapcanvas'); if(!c) return; const g=c.getContext('2d');
-  g.fillStyle='rgba(20,18,70,.5)'; g.fillRect(0,0,c.width,c.height);
-  // sterretjes achtergrond
-  g.fillStyle='rgba(255,255,255,.4)';
-  for(let i=0;i<40;i++){ g.beginPath(); g.arc((i*47)%c.width,(i*29)%c.height,rnd(0.5,1.6),0,6.2832); g.fill(); }
-  const n=dims.length, spacing=c.width/(n+1);
-  const positions=[];
-  for(let i=0;i<n;i++){ positions.push({x:spacing*(i+1),y:c.height/2}); }
-  // verbindingslijnen (zwart gat routes)
-  g.strokeStyle='rgba(197,139,232,.55)'; g.lineWidth=2.5; g.setLineDash([6,5]);
-  for(let i=0;i<n-1;i++){ g.beginPath(); g.moveTo(positions[i].x+38,positions[i].y); g.lineTo(positions[i+1].x-38,positions[i+1].y); g.stroke(); }
-  g.setLineDash([]);
+  const W=c.width, H=c.height;
+  g.fillStyle='rgba(20,18,70,.7)'; g.fillRect(0,0,W,H);
+  // sterrenveld
+  g.fillStyle='rgba(255,255,255,.5)';
+  for(let i=0;i<80;i++){ g.beginPath(); g.arc((i*53)%W,(i*37)%H,rnd(0.5,1.6),0,6.2832); g.fill(); }
+  // pixel-posities
+  const margin=32;
+  mapPositions=DIM_SPECS.map(s=>({x:margin+s.mapPos[0]*(W-2*margin), y:margin+s.mapPos[1]*(H-2*margin)}));
+  // verbindingslijnen (unieke paren)
+  const seen=new Set();
+  DIM_SPECS.forEach((s,i)=>{ (s.neighbors||[]).forEach(j=>{
+    const key=Math.min(i,j)+'-'+Math.max(i,j); if(seen.has(key)) return; seen.add(key);
+    const a=mapPositions[i], b=mapPositions[j];
+    const bothVis=dims[i].visited && dims[j].visited;
+    const oneVis=dims[i].visited || dims[j].visited;
+    g.strokeStyle = bothVis ? 'rgba(197,139,232,.7)' : (oneVis ? 'rgba(255,210,74,.5)' : 'rgba(255,255,255,.15)');
+    g.lineWidth = bothVis ? 2.5 : 2;
+    g.setLineDash(bothVis ? [] : [5,4]);
+    g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke();
+  }); }); g.setLineDash([]);
   // teken elk stelsel
-  dims.forEach((d,i)=>{ const p=positions[i], huidig=i===active;
-    const played = d.beams.filter(b=>b.played).length;
-    const bezocht = played>0 || i===active;
+  DIM_SPECS.forEach((s,i)=>{ const p=mapPositions[i], huidig=i===active;
+    const bezocht=dims[i].visited;
+    const buur=(DIM_SPECS[active].neighbors||[]).includes(i);
+    const played = dims[i].beams.filter(b=>b.played).length;
     // gloed
-    for(let k=3;k>=1;k--){ g.fillStyle=huidig?'rgba(255,210,74,'+(0.08*k)+')' : (bezocht?'rgba(197,139,232,'+(0.06*k)+')':'rgba(51,201,198,'+(0.04*k)+')');
-      g.beginPath(); g.arc(p.x,p.y,26+k*8,0,6.2832); g.fill(); }
-    // stelsel-bol
-    const grad=g.createRadialGradient(p.x-8,p.y-8,4,p.x,p.y,32);
+    for(let k=3;k>=1;k--){ let col;
+      if(huidig) col='rgba(255,210,74,'+(0.10*k)+')';
+      else if(bezocht) col='rgba(197,139,232,'+(0.06*k)+')';
+      else if(buur) col='rgba(51,201,198,'+(0.05*k)+')';
+      else col='rgba(74,68,98,'+(0.03*k)+')';
+      g.fillStyle=col; g.beginPath(); g.arc(p.x,p.y,22+k*6,0,6.2832); g.fill(); }
+    // bol
+    const grad=g.createRadialGradient(p.x-6,p.y-6,3,p.x,p.y,24);
     if(huidig){ grad.addColorStop(0,'#FFE7A0'); grad.addColorStop(1,'#F2A65A'); }
     else if(bezocht){ grad.addColorStop(0,'#E6CFF5'); grad.addColorStop(1,'#8A5FB0'); }
-    else { grad.addColorStop(0,'#BEEDEB'); grad.addColorStop(1,'#2AA09C'); }
-    g.fillStyle=grad; g.strokeStyle='#1E1B5E'; g.lineWidth=2.5;
-    g.beginPath(); g.arc(p.x,p.y,32,0,6.2832); g.fill(); g.stroke();
-    // ster in het midden voor huidige
+    else if(buur){ grad.addColorStop(0,'#BEEDEB'); grad.addColorStop(1,'#2AA09C'); }
+    else { grad.addColorStop(0,'#5A5470'); grad.addColorStop(1,'#3A3450'); }
+    g.fillStyle=grad; g.strokeStyle='#1E1B5E'; g.lineWidth=2.2;
+    g.beginPath(); g.arc(p.x,p.y,24,0,6.2832); g.fill(); g.stroke();
+    // ster in het midden voor huidige positie
     if(huidig){ g.fillStyle='#1E1B5E'; g.beginPath();
-      for(let k=0;k<10;k++){ const a=-Math.PI/2+k*Math.PI/5, r=k%2?5:12; const x=p.x+Math.cos(a)*r, y=p.y+Math.sin(a)*r; k?g.lineTo(x,y):g.moveTo(x,y); }
+      for(let k=0;k<10;k++){ const a=-Math.PI/2+k*Math.PI/5, r=k%2?4:10; const x=p.x+Math.cos(a)*r, y=p.y+Math.sin(a)*r; k?g.lineTo(x,y):g.moveTo(x,y); }
       g.closePath(); g.fill(); }
+    // ? voor onontdekt
+    if(!bezocht && !buur && !huidig){ g.fillStyle='rgba(255,255,255,.4)'; g.font='800 20px -apple-system,sans-serif';
+      g.textAlign='center'; g.textBaseline='middle'; g.fillText('?', p.x, p.y+1); }
     // naam
-    g.fillStyle='#fff'; g.font='700 13px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
-    g.fillText(d.name.replace(' stelsel','').replace('sterrenstelsel','Sterren'), p.x, p.y+50);
-    // vakken-teller onder
-    g.fillStyle='rgba(255,255,255,.75)'; g.font='600 11px -apple-system,sans-serif';
-    g.fillText(played+'/'+d.beams.length+' vakken', p.x, p.y+66);
+    if(bezocht || buur || huidig){
+      g.fillStyle='#fff'; g.font='700 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(s.name, p.x, p.y+36);
+      if(bezocht){ g.fillStyle='rgba(255,255,255,.7)'; g.font='600 10px -apple-system,sans-serif';
+        g.fillText(played+'/'+dims[i].beams.length, p.x, p.y+50); }
+    }
   });
-  // "Onbekend"-stelsels rechts (nog niet ontgrendeld) — visueel hint
-  g.strokeStyle='rgba(255,255,255,.3)'; g.setLineDash([4,4]); g.lineWidth=1.5;
-  const lastX=positions[n-1].x;
-  g.beginPath(); g.moveTo(lastX+38, c.height/2); g.lineTo(c.width-10, c.height/2); g.stroke(); g.setLineDash([]);
-  g.fillStyle='rgba(255,255,255,.5)'; g.font='italic 11px -apple-system,sans-serif'; g.textAlign='right';
-  g.fillText('meer stelsels ontdekken →', c.width-14, c.height/2-10);
 }
 // herbouw het paneel met behoud van scroll-positie
 function refreshGarage(){ const sc=upcard.querySelector('.garage-scroll'); const top=sc?sc.scrollTop:0; buildUpgradePanel(); const sc2=upcard.querySelector('.garage-scroll'); if(sc2) sc2.scrollTop=top; }
