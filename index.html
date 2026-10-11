@@ -1663,32 +1663,45 @@ function genRuimtelijk(){
   return genBlokken();
 }
 
-// ===== TAFEL VAN 2 — meerdere oefentypes =====
+// ===== TAFEL VAN 2 — vermenigvuldigen + delen door elkaar =====
+// Oefentypes: toetsenbord · verbind-met-lijnen · groeperen · invul
+// 60% × / 40% ÷ (begin vooral ×, einde meer delingen)
 function genTafel2(progress){
   progress = progress||0;
-  // Mix: toetsenbord (direct product), verbind-lijnen, groeperen, invul
+  // Kans op delingen stijgt met progress (vanaf vraag ~4)
+  const deelKans = progress<0.3 ? 0 : (progress<0.5 ? 0.3 : 0.45);
+  const isDeling = Math.random()<deelKans;
   const r = Math.random();
-  if(progress<0.3 || r<0.4){
-    // directe som a × 2 = ?  (toetsenbord)
+  if(progress<0.3 || r<0.35){
+    // directe som (toetsenbord) — keer OF deel
     const a = ri(1,10);
+    if(isDeling) return { prompt:(a*2)+' : 2 = ?', correct:String(a), keyboard:true };
     return { prompt:a+' × 2 = ?', correct:String(a*2), keyboard:true };
   }
   if(r<0.7){
-    // verbind-met-lijnen: 4 sommen → 4 antwoorden
+    // verbind-met-lijnen: 4 sommen → 4 antwoorden; mix van × en :
     const picks=[]; const used=new Set();
     while(picks.length<4){ const a=ri(1,10); if(!used.has(a)){ used.add(a); picks.push(a); } }
-    const left = picks.map(a=>({text:a+' × 2', value:a*2}));
-    const right = picks.map(p=>p*2).slice().sort(()=>Math.random()-0.5).map(v=>({text:String(v), value:v}));
+    const left = picks.map(a=>{
+      const d = deelKans>0 && Math.random()<deelKans;
+      return d ? {text:(a*2)+' : 2', value:a} : {text:a+' × 2', value:a*2};
+    });
+    const right = left.map(it=>({text:String(it.value), value:it.value})).sort(()=>Math.random()-0.5);
     return { connect:true, prompt:'Verbind de som met het juiste antwoord', left, right };
   }
-  if(r<0.85){
-    // groeperen: hoeveel groepjes van 2?
+  if(r<0.88){
+    // groeperen met bloemen — keer (bloemen tellen) of delen (groepjes maken)
     const groups = ri(2,8); const total=groups*2;
-    return { prompt:'Je ziet '+total+' bloemen in groepjes van 2.<br>Hoeveel groepjes zijn er?', correct:String(groups), keyboard:true,
+    if(isDeling){
+      return { prompt:total+' bloemen in groepjes van 2.<br>Hoeveel groepjes zie je?', correct:String(groups), keyboard:true,
+        draw:(g,w,h)=>drawFlowerGroups(g,w,h,groups) };
+    }
+    return { prompt:groups+' groepjes van 2 bloemen.<br>Hoeveel bloemen in totaal?', correct:String(total), keyboard:true,
       draw:(g,w,h)=>drawFlowerGroups(g,w,h,groups) };
   }
-  // invul: a × 2 = 10, vul a in
+  // invul-oefening — mix van × en :
   const a = ri(1,10); const prod=a*2;
+  if(isDeling) return { prompt:prod+' : 2 = ?', correct:String(a), keyboard:true };
   return { prompt:'? × 2 = '+prod, correct:String(a), keyboard:true };
 }
 function drawFlowerGroups(g,w,h,groups){
