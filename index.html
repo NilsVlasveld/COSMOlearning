@@ -1706,20 +1706,34 @@ function genTafel2(progress){
 }
 function drawFlowerGroups(g,w,h,groups){
   g.save();
-  const perRow=Math.min(groups,5); const rows=Math.ceil(groups/perRow);
-  const cellW = w/(perRow+1); const startX=cellW; const startY=h/2-(rows-1)*30;
+  // slimme auto-layout: altijd netjes gescheiden, max 4 per rij
+  let perRow;
+  if(groups<=3) perRow=groups;
+  else if(groups<=4) perRow=2;
+  else if(groups<=6) perRow=3;
+  else perRow=4;
+  const rows=Math.ceil(groups/perRow);
+  const availW=w-18, availH=h-18;
+  const cellW=Math.min(availW/perRow, 86);
+  const cellH=Math.min(availH/rows, 56);
+  // groep-ellipse past binnen cel met marge (zodat ellipses niet raken)
+  const groupW=cellW*0.85, groupH=cellH*0.78;
+  const totalW=cellW*perRow, totalH=cellH*rows;
+  const startX=(w-totalW)/2 + cellW/2;
+  const startY=(h-totalH)/2 + cellH/2;
+  const flowerR=Math.min(groupH*0.28, 6.5);
+  const spacing=groupW*0.22;
   for(let i=0;i<groups;i++){
     const col=i%perRow, row=Math.floor(i/perRow);
-    const cx=startX+col*cellW+cellW/2-30, cy=startY+row*60;
-    // tekening groepje: 2 bloemen in een cirkel
+    const cx=startX+col*cellW, cy=startY+row*cellH;
     g.strokeStyle='#1E1B5E'; g.lineWidth=2; g.setLineDash([4,3]);
-    g.beginPath(); g.ellipse(cx+15,cy+8,32,22,0,0,6.2832); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.ellipse(cx, cy, groupW/2, groupH/2, 0, 0, 6.2832); g.stroke(); g.setLineDash([]);
     for(let k=0;k<2;k++){
-      const fx=cx+k*22, fy=cy+8;
-      g.fillStyle='#F58BB0'; // bloemblaadjes
+      const fx=cx+(k===0?-spacing:spacing), fy=cy;
+      g.fillStyle='#F58BB0';
       for(let p=0;p<5;p++){ const a=p*Math.PI*2/5-Math.PI/2;
-        g.beginPath(); g.arc(fx+Math.cos(a)*7,fy+Math.sin(a)*7,5,0,6.2832); g.fill(); }
-      g.fillStyle='#FFD24A'; g.beginPath(); g.arc(fx,fy,4,0,6.2832); g.fill();
+        g.beginPath(); g.arc(fx+Math.cos(a)*flowerR, fy+Math.sin(a)*flowerR, flowerR*0.78, 0, 6.2832); g.fill(); }
+      g.fillStyle='#FFD24A'; g.beginPath(); g.arc(fx, fy, flowerR*0.55, 0, 6.2832); g.fill();
     }
   }
   g.restore();
