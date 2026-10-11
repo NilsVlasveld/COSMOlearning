@@ -286,9 +286,11 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   tellen:{color:'#F58BB0',core:'#FAD0DF',label:'Tellen',icon:'count'},
   ruimtelijk:{color:'#F0916B',core:'#FBD3C2',label:'Ruimtelijk',icon:'compass'},
   vraagstukken:{color:'#E8B547',core:'#F7E1A6',label:'Vraagstukken',icon:'quiz'},
-  tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'} };
+  tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'},
+  rek20:{color:'#97C459',core:'#D8EEBF',label:'Rekenen tot 20',icon:'rek20'},
+  te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -336,7 +338,9 @@ const STD_BEAMS=[
   {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
   {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
   {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'},
-  {x:1500,y:900,subject:'tafel2'}
+  {x:1500,y:900,subject:'tafel2'},
+  {x:1800,y:2000,subject:'rek20'},
+  {x:3000,y:1400,subject:'te100'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -389,7 +393,7 @@ let active=0, cur=dims[active]; cur.visited=true;
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
 function beamActive(b){
   if(b.subject==='tellen' && level===2) return false;
-  if(b.subject==='tafel2' && level!==2) return false;
+  if(['tafel2','rek20','te100'].includes(b.subject) && level!==2) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -811,6 +815,9 @@ function drawBeamIcon(g,b,s){
     g.beginPath(); g.moveTo(10,0); g.lineTo(5,-3); g.lineTo(5,3); g.closePath(); g.fill(); }
   else if(s.icon==='quiz'){ g.font='800 16px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?',0,1); }
   else if(s.icon==='cross'){ g.lineWidth=4; g.lineCap='round'; g.beginPath(); g.moveTo(-7,-7); g.lineTo(7,7); g.moveTo(7,-7); g.lineTo(-7,7); g.stroke(); }
+  else if(s.icon==='rek20'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('≤20',0,1); }
+  else if(s.icon==='blocks'){ // T-E blokjes
+    g.lineWidth=1.6; g.strokeRect(-9,-6,4,12); g.strokeRect(-4,-6,4,12); g.strokeRect(1,-6,4,12); g.strokeRect(6,-2,5,5); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1738,6 +1745,101 @@ function drawFlowerGroups(g,w,h,groups){
   }
   g.restore();
 }
+// ===== REKENEN TOT 20 — herhaling LJ1 =====
+// Mix van optellen, aftrekken, aanvullen; met verbind-lijnen en invul-oefentypes
+function genRek20(progress){
+  progress = progress||0;
+  const max = progress<0.3 ? 10 : (progress<0.65 ? 15 : 20);
+  const r=Math.random();
+  if(progress<0.3 || r<0.4){
+    // directe som
+    const sub=Math.random()<0.5;
+    if(sub){ const a=ri(5,max); const b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true }; }
+    const a=ri(1,max-2); const b=ri(1,max-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true };
+  }
+  if(r<0.7){
+    // verbind-lijnen: 4 sommen -> 4 antwoorden (optellen + aftrekken gemixt)
+    const picks=[]; const used=new Set();
+    while(picks.length<4){
+      const sub=Math.random()<0.5;
+      let a,b,ans,txt;
+      if(sub){ a=ri(5,max); b=ri(1,a-1); ans=a-b; txt=a+' − '+b; }
+      else { a=ri(1,max-2); b=ri(1,max-a); ans=a+b; txt=a+' + '+b; }
+      if(used.has(ans)) continue;
+      used.add(ans); picks.push({text:txt, value:ans});
+    }
+    const right=picks.map(p=>({text:String(p.value), value:p.value})).sort(()=>Math.random()-0.5);
+    return { connect:true, prompt:'Verbind de som met het juiste antwoord', left:picks, right };
+  }
+  // aanvullen: a + ? = c  OR  c − ? = b
+  if(r<0.9){
+    const c=ri(5,max); const a=ri(1,c-1);
+    return { prompt:a+' + ? = '+c, correct:String(c-a), keyboard:true };
+  }
+  const c=ri(3,max); const b=ri(1,c-1);
+  return { prompt:(c)+' − ? = '+b, correct:String(c-b), keyboard:true };
+}
+// ===== GETALLEN TOT 100 — tientallen & eenheden =====
+function drawTEblocks(g,w,h,T,E){
+  g.save();
+  // staafjes (tientallen) links, blokjes (eenheden) rechts
+  const stH=70, stW=10, stGap=4;
+  const blSize=12, blGap=3;
+  const totalW = T*(stW+stGap) - stGap + 20 + Math.min(E,5)*(blSize+blGap);
+  const x0=(w-totalW)/2; const yMid=h/2;
+  // tientallen
+  for(let i=0;i<T;i++){
+    const x=x0+i*(stW+stGap), y=yMid-stH/2;
+    g.fillStyle='#F2A65A'; g.strokeStyle='#1E1B5E'; g.lineWidth=1.8;
+    g.beginPath(); g.rect(x,y,stW,stH); g.fill(); g.stroke();
+    // lijntjes voor 10 eenheden
+    g.lineWidth=0.8; g.strokeStyle='rgba(30,27,94,.5)';
+    for(let k=1;k<10;k++){ g.beginPath(); g.moveTo(x,y+k*(stH/10)); g.lineTo(x+stW,y+k*(stH/10)); g.stroke(); }
+  }
+  // eenheden
+  const unitsX = x0 + T*(stW+stGap) + 12;
+  for(let i=0;i<E;i++){
+    const col=i%5, row=Math.floor(i/5);
+    const x=unitsX+col*(blSize+blGap), y=yMid-stH/2+row*(blSize+blGap);
+    g.fillStyle='#5BA8E8'; g.strokeStyle='#1E1B5E'; g.lineWidth=1.6;
+    g.beginPath(); g.rect(x,y,blSize,blSize); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+function genTE100(progress){
+  progress = progress||0;
+  const r=Math.random();
+  if(progress<0.25 || r<0.3){
+    // zie-het-getal: toon T-E blokjes, type het getal
+    const T=ri(1,9), E=ri(0,9); const num=T*10+E;
+    return { prompt:'Welk getal is dit?', correct:String(num), keyboard:true,
+      draw:(g,w,h)=>drawTEblocks(g,w,h,T,E) };
+  }
+  if(r<0.55){
+    // hoeveel T? of hoeveel E?
+    const num=ri(11,99); const T=Math.floor(num/10), E=num%10;
+    if(Math.random()<0.5) return { prompt:'Hoeveel <b>tientallen</b> in '+num+'?', correct:String(T), keyboard:true };
+    return { prompt:'Hoeveel <b>eenheden</b> in '+num+'?', correct:String(E), keyboard:true };
+  }
+  if(r<0.78){
+    // vergelijken (groter)
+    let a,b; do{ a=ri(10,99); b=ri(10,99); } while(a===b);
+    const correct = a>b ? String(a) : String(b);
+    return { prompt:'Welk getal is <b>groter</b>?', options:[String(a),String(b),Math.min(a,b)-1>0?String(Math.min(a,b)-1):'0'].sort(()=>Math.random()-0.5), correct, wide:false };
+  }
+  if(r<0.9){
+    // T + E samen = getal
+    const T=ri(2,9), E=ri(1,9);
+    return { prompt:T+' tientallen + '+E+' eenheden = ?', correct:String(T*10+E), keyboard:true };
+  }
+  // verbind-lijnen: 4 getallen ↔ hun T+E samenstelling
+  const picks=[]; const used=new Set();
+  while(picks.length<4){ const T=ri(1,9), E=ri(1,9); const n=T*10+E;
+    if(!used.has(n)){ used.add(n); picks.push({T,E,n}); } }
+  const left = picks.map(p=>({text:p.T+' T + '+p.E+' E', value:p.n}));
+  const right = picks.map(p=>({text:String(p.n), value:p.n})).sort(()=>Math.random()-0.5);
+  return { connect:true, prompt:'Verbind elke T+E met het juiste getal', left, right };
+}
 function makeQuestion(subject, progress){
   progress = progress||0;
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
@@ -1751,6 +1853,8 @@ function makeQuestion(subject, progress){
   if(subject==='lezen') return genLezen();
   if(subject==='vraagstukken'){ const d=genVraagstuk(progress); return { ...d, keyboard:true, options:undefined }; }
   if(subject==='tafel2') return genTafel2(progress);
+  if(subject==='rek20') return genRek20(progress);
+  if(subject==='te100') return genTE100(progress);
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 // ===== VRAAGSTUKKEN — echte rekencontext =====
