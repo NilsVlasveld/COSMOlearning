@@ -374,8 +374,12 @@ const dims=DIM_SPECS.map(buildDimension);
 let active=0, cur=dims[active]; cur.visited=true;
 
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
-function allPlayed(d){ return d.beams.every(b=>b.played); }
-function playedCount(d){ return d.beams.filter(b=>b.played).length; }
+// Tellen is niet meer nodig in LJ2 — die beam wordt verborgen
+function beamActive(b){ if(b.subject==='tellen' && level===2) return false; return true; }
+function activeBeams(d){ return d.beams.filter(beamActive); }
+function allPlayed(d){ return activeBeams(d).every(b=>b.played); }
+function playedCount(d){ return activeBeams(d).filter(b=>b.played).length; }
+function totalBeams(d){ return activeBeams(d).length; }
 
 const ufo={ x:340,y:340,vx:0,vy:0,color:C_BODY,dome:C_DOME,invuln:0,shake:0 };
 const DOME_COLORS=['#A6E4EE','#C2E1F8','#F4B9CE','#C8E6A0','#D9C2F0','#FFE7A0'];
@@ -442,7 +446,7 @@ function updateArcadeChip(){
 }
 function updateVakkenHud(){
   const el=document.getElementById('vakken'); if(!el) return;
-  el.innerHTML='<span class="vk-ic">📚</span><span class="vk-n">'+playedCount(cur)+'/'+cur.beams.length+'</span><span class="vk-tx">vakken</span>';
+  el.innerHTML='<span class="vk-ic">📚</span><span class="vk-n">'+playedCount(cur)+'/'+totalBeams(cur)+'</span><span class="vk-tx">vakken</span>';
 }
 
 const keys={};
@@ -504,9 +508,9 @@ function update(dt){
     if(d<min && ufo.invuln<=0){ const nx=dx/(d||1), ny=dy/(d||1); ufo.x=r.x+nx*min; ufo.y=r.y+ny*min;
       const dot=ufo.vx*nx+ufo.vy*ny; ufo.vx=(ufo.vx-2*dot*nx)*0.6; ufo.vy=(ufo.vy-2*dot*ny)*0.6; ufo.invuln=0.45; ufo.shake=0.35; }
   }
-  for(const b of cur.beams){ if(b.cool>0)b.cool-=dt; b.phase+=dt; }
+  for(const b of cur.beams){ if(!beamActive(b)) continue; if(b.cool>0)b.cool-=dt; b.phase+=dt; }
   const bh=cur.blackhole; if(bh.cool>0)bh.cool-=dt;
-  for(const b of cur.beams){ if(b.cool<=0 && b.score<10 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
+  for(const b of cur.beams){ if(!beamActive(b)) continue; if(b.cool<=0 && b.score<10 && Math.hypot(ufo.x-b.x,ufo.y-b.y)<b.r+10){ openMiniGame(b); break; } }
   if(bh.unlocked && bh.cool<=0 && Math.hypot(ufo.x-bh.x,ufo.y-bh.y)<bh.r){ travel(bh.target); }
   const pt=cur.portal; if(pt && arcadeAvail){ pt.phase+=dt; if(pt.cool>0)pt.cool-=dt; else if(Math.hypot(ufo.x-pt.x,ufo.y-pt.y)<pt.r){ startArcade(); } }
 
@@ -824,6 +828,7 @@ function render(){
       else star4(ctx,tr.x,tr.y,2+a*3); } }
 
   for(const b of cur.beams){
+    if(!beamActive(b)) continue;
     const s=SUBJECTS[b.subject]; const perfect=b.score>=10; const op=perfect?0.3:(b.played?0.7:1); const pulse=0.5+0.5*Math.sin(b.phase*2);
     ctx.globalAlpha=op;
     ctx.fillStyle=hexA(s.color,0.14+pulse*0.05);
@@ -866,13 +871,13 @@ function drawMinimap(){
   ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1; ctx.stroke();
   const sx=mw/cur.w, sy=mh/cur.h;
   for(const r of cur.rocks){ ctx.fillStyle='rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(px+r.x*sx,py+r.y*sy,1.4,0,6.2832); ctx.fill(); }
-  for(const b of cur.beams){ ctx.globalAlpha=b.played?0.4:1; ctx.fillStyle=SUBJECTS[b.subject].color; ctx.beginPath(); ctx.arc(px+b.x*sx,py+b.y*sy,3.2,0,6.2832); ctx.fill(); ctx.globalAlpha=1; }
+  for(const b of cur.beams){ if(!beamActive(b)) continue; ctx.globalAlpha=b.played?0.4:1; ctx.fillStyle=SUBJECTS[b.subject].color; ctx.beginPath(); ctx.arc(px+b.x*sx,py+b.y*sy,3.2,0,6.2832); ctx.fill(); ctx.globalAlpha=1; }
   if(cur.blackhole.unlocked){ const bh=cur.blackhole; ctx.fillStyle='#120C2C'; ctx.beginPath(); ctx.arc(px+bh.x*sx,py+bh.y*sy,3.6,0,6.2832); ctx.fill(); ctx.strokeStyle='#C58BE8'; ctx.lineWidth=1.4; ctx.stroke(); }
   if(cur.portal && arcadeAvail){ const p=cur.portal; ctx.fillStyle='#6AD1A8'; ctx.beginPath(); ctx.arc(px+p.x*sx,py+p.y*sy,3.4,0,6.2832); ctx.fill(); ctx.strokeStyle='#1E1B5E'; ctx.lineWidth=1.2; ctx.stroke(); }
   ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(px+ufo.x*sx,py+ufo.y*sy,2.6,0,6.2832); ctx.fill();
 }
 function drawOffscreenHint(){
-  const pois=cur.beams.filter(b=>!b.played).map(b=>({x:b.x,y:b.y,c:SUBJECTS[b.subject].color}));
+  const pois=cur.beams.filter(b=>beamActive(b) && !b.played).map(b=>({x:b.x,y:b.y,c:SUBJECTS[b.subject].color}));
   if(cur.blackhole.unlocked) pois.push({x:cur.blackhole.x,y:cur.blackhole.y,c:'#C58BE8'});
   if(cur.portal && arcadeAvail) pois.push({x:cur.portal.x,y:cur.portal.y,c:'#6AD1A8'});
   let best=null,bd=1e9; for(const p of pois){ const d=Math.hypot(ufo.x-p.x,ufo.y-p.y); if(d<bd){bd=d;best=p;} }
@@ -1942,7 +1947,7 @@ function addStars(n){
 }
 function updateGoalHud(){
   const tEl=document.getElementById('goaltext'), fEl=document.getElementById('goalfill'); if(!tEl)return;
-  const total=cur.beams.length, played=playedCount(cur);
+  const total=totalBeams(cur), played=playedCount(cur);
   if(cur.blackhole.unlocked){ tEl.textContent='Het zwarte gat is open — vlieg erin naar een nieuwe ruimte!'; fEl.style.width='100%'; return; }
   const left=total-played;
   tEl.textContent='Nog '+left+' vak'+(left===1?'':'ken')+' spelen → zwart gat';
@@ -2150,7 +2155,7 @@ function showStart(returning){
   document.getElementById('startbtn').onclick=()=>{
     const f=document.getElementById('obname');
     if(f){ const v=f.value.trim(); playerName = v || 'Ruimtevaarder'; document.getElementById('namelabel').textContent=playerName; }
-    startEl.classList.remove('show'); paused=false; last=performance.now(); scheduleSave();
+    startEl.classList.remove('show'); paused=false; last=performance.now(); updateVakkenHud(); updateGoalHud(); scheduleSave();
   };
 }
 
