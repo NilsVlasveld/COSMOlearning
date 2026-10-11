@@ -97,6 +97,16 @@
   .kb-key.kb-ok { background:#7BE0A0; }
   .kb-key.kb-del { background:#F4B9CE; }
   .kb-key:disabled { opacity:.55; cursor:default; }
+  /* verbind-met-lijnen oefening */
+  .cn-wrap { display:flex; align-items:stretch; gap:0; margin:6px 0 8px; min-height:220px; }
+  .cn-col { display:flex; flex-direction:column; justify-content:space-around; gap:10px; flex:1; }
+  .cn-col button { background:#FFE7A0; color:#1E1B5E; border:3px solid #1E1B5E; border-radius:12px;
+    font-size:19px; font-weight:800; padding:14px 10px; cursor:pointer; transition:transform .1s; width:100%; }
+  .cn-col button:active { transform:scale(.96); }
+  .cn-col button.sel { background:#FFD24A; box-shadow:0 0 0 4px rgba(255,210,74,.5); }
+  .cn-col button.done { background:#7BE0A0; cursor:default; }
+  .cn-col button:disabled { opacity:.85; }
+  .cn-svg { flex:none; width:60px; align-self:stretch; }
   #qcanvas { display:block; margin:0 auto; max-width:100%; height:auto; }
   .answers { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
   .answers.wide { flex-direction:column; gap:10px; }
@@ -275,9 +285,10 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   geld:{color:'#6AD1A8',core:'#C6EFDD',label:'Geld',icon:'coin'},
   tellen:{color:'#F58BB0',core:'#FAD0DF',label:'Tellen',icon:'count'},
   ruimtelijk:{color:'#F0916B',core:'#FBD3C2',label:'Ruimtelijk',icon:'compass'},
-  vraagstukken:{color:'#E8B547',core:'#F7E1A6',label:'Vraagstukken',icon:'quiz'} };
+  vraagstukken:{color:'#E8B547',core:'#F7E1A6',label:'Vraagstukken',icon:'quiz'},
+  tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -324,7 +335,8 @@ function applySave(data){
 const STD_BEAMS=[
   {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
   {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
-  {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'}
+  {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'},
+  {x:1500,y:900,subject:'tafel2'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -374,8 +386,12 @@ const dims=DIM_SPECS.map(buildDimension);
 let active=0, cur=dims[active]; cur.visited=true;
 
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
-// Tellen is niet meer nodig in LJ2 — die beam wordt verborgen
-function beamActive(b){ if(b.subject==='tellen' && level===2) return false; return true; }
+// Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
+function beamActive(b){
+  if(b.subject==='tellen' && level===2) return false;
+  if(b.subject==='tafel2' && level!==2) return false;
+  return true;
+}
 function activeBeams(d){ return d.beams.filter(beamActive); }
 function allPlayed(d){ return activeBeams(d).every(b=>b.played); }
 function playedCount(d){ return activeBeams(d).filter(b=>b.played).length; }
@@ -794,6 +810,7 @@ function drawBeamIcon(g,b,s){
     g.beginPath(); g.moveTo(0,-10); g.lineTo(-3,-5); g.lineTo(3,-5); g.closePath(); g.fill();
     g.beginPath(); g.moveTo(10,0); g.lineTo(5,-3); g.lineTo(5,3); g.closePath(); g.fill(); }
   else if(s.icon==='quiz'){ g.font='800 16px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?',0,1); }
+  else if(s.icon==='cross'){ g.lineWidth=4; g.lineCap='round'; g.beginPath(); g.moveTo(-7,-7); g.lineTo(7,7); g.moveTo(7,-7); g.lineTo(-7,7); g.stroke(); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1646,6 +1663,54 @@ function genRuimtelijk(){
   return genBlokken();
 }
 
+// ===== TAFEL VAN 2 — meerdere oefentypes =====
+function genTafel2(progress){
+  progress = progress||0;
+  // Mix: toetsenbord (direct product), verbind-lijnen, groeperen, invul
+  const r = Math.random();
+  if(progress<0.3 || r<0.4){
+    // directe som a × 2 = ?  (toetsenbord)
+    const a = ri(1,10);
+    return { prompt:a+' × 2 = ?', correct:String(a*2), keyboard:true };
+  }
+  if(r<0.7){
+    // verbind-met-lijnen: 4 sommen → 4 antwoorden
+    const picks=[]; const used=new Set();
+    while(picks.length<4){ const a=ri(1,10); if(!used.has(a)){ used.add(a); picks.push(a); } }
+    const left = picks.map(a=>({text:a+' × 2', value:a*2}));
+    const right = picks.map(p=>p*2).slice().sort(()=>Math.random()-0.5).map(v=>({text:String(v), value:v}));
+    return { connect:true, prompt:'Verbind de som met het juiste antwoord', left, right };
+  }
+  if(r<0.85){
+    // groeperen: hoeveel groepjes van 2?
+    const groups = ri(2,8); const total=groups*2;
+    return { prompt:'Je ziet '+total+' bloemen in groepjes van 2.<br>Hoeveel groepjes zijn er?', correct:String(groups), keyboard:true,
+      draw:(g,w,h)=>drawFlowerGroups(g,w,h,groups) };
+  }
+  // invul: a × 2 = 10, vul a in
+  const a = ri(1,10); const prod=a*2;
+  return { prompt:'? × 2 = '+prod, correct:String(a), keyboard:true };
+}
+function drawFlowerGroups(g,w,h,groups){
+  g.save();
+  const perRow=Math.min(groups,5); const rows=Math.ceil(groups/perRow);
+  const cellW = w/(perRow+1); const startX=cellW; const startY=h/2-(rows-1)*30;
+  for(let i=0;i<groups;i++){
+    const col=i%perRow, row=Math.floor(i/perRow);
+    const cx=startX+col*cellW+cellW/2-30, cy=startY+row*60;
+    // tekening groepje: 2 bloemen in een cirkel
+    g.strokeStyle='#1E1B5E'; g.lineWidth=2; g.setLineDash([4,3]);
+    g.beginPath(); g.ellipse(cx+15,cy+8,32,22,0,0,6.2832); g.stroke(); g.setLineDash([]);
+    for(let k=0;k<2;k++){
+      const fx=cx+k*22, fy=cy+8;
+      g.fillStyle='#F58BB0'; // bloemblaadjes
+      for(let p=0;p<5;p++){ const a=p*Math.PI*2/5-Math.PI/2;
+        g.beginPath(); g.arc(fx+Math.cos(a)*7,fy+Math.sin(a)*7,5,0,6.2832); g.fill(); }
+      g.fillStyle='#FFD24A'; g.beginPath(); g.arc(fx,fy,4,0,6.2832); g.fill();
+    }
+  }
+  g.restore();
+}
 function makeQuestion(subject, progress){
   progress = progress||0;
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
@@ -1658,6 +1723,7 @@ function makeQuestion(subject, progress){
   if(subject==='ruimtelijk') return genRuimtelijk();
   if(subject==='lezen') return genLezen();
   if(subject==='vraagstukken'){ const d=genVraagstuk(progress); return { ...d, keyboard:true, options:undefined }; }
+  if(subject==='tafel2') return genTafel2(progress);
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 // ===== VRAAGSTUKKEN — echte rekencontext =====
@@ -1764,6 +1830,7 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   const showS = true; // alle vakken hebben nu een begin/einde-split
   const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
+  if(q.connect){ renderConnect(q, head); return; }
   if(q.keyboard){ renderKeyboard(q, head); return; }
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
@@ -1807,6 +1874,68 @@ function renderFill(q, head){
   draw();
 }
 // numeriek toetsenbord: leerling tikt zelf het antwoord
+// Verbind-met-lijnen oefening — tik een item links, dan een item rechts om ze te verbinden
+function renderConnect(q, head){
+  let selected=null; const links={}; const correctCount=q.left.length;
+  const leftHtml=q.left.map((it,i)=>'<button class="cn-left" data-i="'+i+'" data-v="'+it.value+'">'+it.text+'</button>').join('');
+  const rightHtml=q.right.map((it,i)=>'<button class="cn-right" data-i="'+i+'" data-v="'+it.value+'">'+it.text+'</button>').join('');
+  mgcard.innerHTML=head+
+    '<div class="q-prompt">'+q.prompt+'</div>'+
+    '<div class="cn-wrap">'+
+      '<div class="cn-col">'+leftHtml+'</div>'+
+      '<svg class="cn-svg" id="cnsvg" width="60" height="100%" viewBox="0 0 60 300" preserveAspectRatio="none"></svg>'+
+      '<div class="cn-col">'+rightHtml+'</div>'+
+    '</div>';
+  const leftBtns = [...mgcard.querySelectorAll('.cn-left')];
+  const rightBtns = [...mgcard.querySelectorAll('.cn-right')];
+  const svg = document.getElementById('cnsvg');
+  function drawLines(){
+    svg.innerHTML='';
+    // viewBox is 60x300; map elke verbinding op basis van index positie
+    Object.keys(links).forEach(li=>{
+      const ri = links[li].rightIndex, ok = links[li].ok;
+      const ly = ((+li)+0.5)/leftBtns.length*300;
+      const ry = (ri+0.5)/rightBtns.length*300;
+      const col = ok ? '#7BE0A0' : '#F58BB0';
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1','0'); line.setAttribute('y1',ly);
+      line.setAttribute('x2','60'); line.setAttribute('y2',ry);
+      line.setAttribute('stroke',col); line.setAttribute('stroke-width','4'); line.setAttribute('stroke-linecap','round');
+      svg.appendChild(line);
+    });
+  }
+  function highlight(){
+    leftBtns.forEach((b,i)=>{ b.classList.toggle('sel', selected && selected.side==='left' && selected.i===i);
+      b.classList.toggle('done', i in links && links[i].ok); });
+    rightBtns.forEach((b,i)=>{ b.classList.toggle('sel', selected && selected.side==='right' && selected.i===i);
+      const takenOk = Object.values(links).some(l=>l.rightIndex===i && l.ok);
+      b.classList.toggle('done', takenOk); });
+  }
+  function tryPair(li, ri){
+    const leftVal = q.left[li].value; const rightVal = q.right[ri].value;
+    const ok = leftVal===rightVal;
+    links[li] = { rightIndex:ri, ok };
+    highlight(); drawLines();
+    if(!ok){ setTimeout(()=>{ delete links[li]; selected=null; highlight(); drawLines(); }, 700); return; }
+    selected=null; highlight();
+    // alle vier juist?
+    const done = Object.values(links).filter(l=>l.ok).length;
+    if(done>=correctCount){
+      leftBtns.forEach(b=>b.disabled=true); rightBtns.forEach(b=>b.disabled=true);
+      mgState.earned+=1; addStars(1); mgState.i++; setTimeout(nextQuestion, 700);
+    }
+  }
+  leftBtns.forEach((b,i)=>b.onclick=()=>{
+    if(i in links && links[i].ok) return;
+    if(selected && selected.side==='right'){ tryPair(i, selected.i); return; }
+    selected = {side:'left', i}; highlight();
+  });
+  rightBtns.forEach((b,i)=>b.onclick=()=>{
+    const takenOk = Object.values(links).some(l=>l.rightIndex===i && l.ok); if(takenOk) return;
+    if(selected && selected.side==='left'){ tryPair(selected.i, i); return; }
+    selected = {side:'right', i}; highlight();
+  });
+}
 function renderKeyboard(q, head){
   let typed=''; const correct=q.correct; const maxLen=Math.max(3, String(correct).length+1);
   const qhtml = q.draw
