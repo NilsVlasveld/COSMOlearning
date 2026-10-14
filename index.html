@@ -288,9 +288,10 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   vraagstukken:{color:'#E8B547',core:'#F7E1A6',label:'Vraagstukken',icon:'quiz'},
   tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'},
   rek20:{color:'#97C459',core:'#D8EEBF',label:'Rekenen tot 20',icon:'rek20'},
-  te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'} };
+  te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'},
+  twee:{color:'#C58BE8',core:'#E6CFF5',label:'Tweeklanken',icon:'ij'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -340,7 +341,8 @@ const STD_BEAMS=[
   {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'},
   {x:1500,y:900,subject:'tafel2'},
   {x:1800,y:2000,subject:'rek20'},
-  {x:3000,y:1400,subject:'te100'}
+  {x:3000,y:1400,subject:'te100'},
+  {x:2600,y:1750,subject:'twee'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -393,7 +395,7 @@ let active=0, cur=dims[active]; cur.visited=true;
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
 function beamActive(b){
   if(b.subject==='tellen' && level===2) return false;
-  if(['tafel2','rek20','te100'].includes(b.subject) && level!==2) return false;
+  if(['tafel2','rek20','te100','twee'].includes(b.subject) && level!==2) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -818,6 +820,7 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='rek20'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('≤20',0,1); }
   else if(s.icon==='blocks'){ // T-E blokjes
     g.lineWidth=1.6; g.strokeRect(-9,-6,4,12); g.strokeRect(-4,-6,4,12); g.strokeRect(1,-6,4,12); g.strokeRect(6,-2,5,5); }
+  else if(s.icon==='ij'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ij',0,1); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1840,6 +1843,51 @@ function genTE100(progress){
   const right = picks.map(p=>({text:String(p.n), value:p.n})).sort(()=>Math.random()-0.5);
   return { connect:true, prompt:'Verbind elke T+E met het juiste getal', left, right };
 }
+// ===== TWEEKLANKEN — Nederlands LJ2 =====
+const TWEEKLANKEN={
+  ei:['trein','reis','geit','zeil','klein','plein','meid','wei','ei','veilig'],
+  ij:['wijn','prijs','fijn','ijs','pijp','vrij','tijd','mijn','krijt','blij'],
+  ou:['hout','oud','koud','touw','zout','vrouw','goud','woud','mout','kous'],
+  au:['saus','pauw','blauw','kauw','gauw','rauw','dauw','paus','taupe','applaus'],
+  ui:['huis','muis','tuin','duif','ruit','struik','buik','buit','kruid','fluit'],
+  eu:['deur','neus','leuk','reus','sleutel','keuken','jeugd','kleur','kneus','meubel'],
+  oe:['boek','koek','voet','moeder','broer','hoed','boer','poes','stoel','soep'],
+  ie:['dier','lief','kiezen','niet','vriend','ziek','piet','iemand','liedje','wiel']
+};
+function genTweeklanken(progress){
+  progress = progress||0;
+  const keys=Object.keys(TWEEKLANKEN);
+  const r=Math.random();
+  if(r<0.4){
+    // welk woord bevat tweeklank X?
+    const target=pick(keys);
+    const correct=pick(TWEEKLANKEN[target]);
+    const others=keys.filter(k=>k!==target);
+    const kA=pick(others);
+    const kB=pick(others.filter(k=>k!==kA));
+    let wrong1=pick(TWEEKLANKEN[kA].filter(w=>!w.includes(target)));
+    let wrong2=pick(TWEEKLANKEN[kB].filter(w=>!w.includes(target) && w!==wrong1));
+    if(!wrong1) wrong1=pick(TWEEKLANKEN[kA]);
+    if(!wrong2) wrong2=pick(TWEEKLANKEN[kB]);
+    const options=[correct,wrong1,wrong2].sort(()=>Math.random()-0.5);
+    return { prompt:'Welk woord bevat de klank <b>'+target+'</b>?', options, correct, wide:false };
+  }
+  if(r<0.78){
+    // vul de ontbrekende tweeklank in
+    const target=pick(keys);
+    const word=pick(TWEEKLANKEN[target].filter(w=>w.includes(target)));
+    if(!word) return genTweeklanken(progress);
+    const puzzle=word.replace(target,'__');
+    const others=keys.filter(k=>k!==target).sort(()=>Math.random()-0.5).slice(0,2);
+    const options=[target,others[0],others[1]].sort(()=>Math.random()-0.5);
+    return { prompt:'Vul de klank aan:<br><span style="font-size:36px;letter-spacing:4px;font-weight:800">'+puzzle+'</span>', options, correct:target, wide:false };
+  }
+  // verbind-lijnen: 4 woorden ↔ 4 tweeklanken
+  const picked=keys.slice().sort(()=>Math.random()-0.5).slice(0,4);
+  const left=picked.map(k=>{ const w=pick(TWEEKLANKEN[k].filter(x=>x.includes(k)))||pick(TWEEKLANKEN[k]); return {text:w,value:k}; });
+  const right=picked.map(k=>({text:k,value:k})).sort(()=>Math.random()-0.5);
+  return { connect:true, prompt:'Verbind elk woord met de juiste klank', left, right };
+}
 function makeQuestion(subject, progress){
   progress = progress||0;
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
@@ -1855,6 +1903,7 @@ function makeQuestion(subject, progress){
   if(subject==='tafel2') return genTafel2(progress);
   if(subject==='rek20') return genRek20(progress);
   if(subject==='te100') return genTE100(progress);
+  if(subject==='twee') return genTweeklanken(progress);
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 // ===== VRAAGSTUKKEN — echte rekencontext =====
