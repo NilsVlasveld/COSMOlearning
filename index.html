@@ -67,8 +67,10 @@
   .qbox.seq { font-size:24px; letter-spacing:1px; }
   .qbox.draw { padding:12px; min-height:0; }
   .qbox.lees { flex-direction:column; gap:10px; font-size:17px; line-height:1.4; padding:16px 16px; }
-  .qbox.text { font-size:19px; line-height:1.4; padding:16px 18px; min-height:60px; text-align:center; word-break:normal; overflow-wrap:break-word; }
+  .qbox.text { font-size:19px; line-height:1.4; padding:16px 18px; min-height:60px; text-align:center; word-break:normal; overflow-wrap:break-word; flex-direction:column; gap:10px; }
   .qbox.text b { font-weight:800; }
+  .qbox.text .puzzle { font-size:30px; letter-spacing:3px; font-weight:800; }
+  .qbox.text .word { font-size:28px; font-weight:800; }
   .lees-text { font-weight:600; }
   .lees-q { font-weight:800; }
   .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
@@ -1909,7 +1911,7 @@ function genTweeklanken(progress){
     const puzzle=word.replace(target,'__');
     const others=keys.filter(k=>k!==target).sort(()=>Math.random()-0.5).slice(0,2);
     const options=[target,others[0],others[1]].sort(()=>Math.random()-0.5);
-    return { prompt:'Vul de klank aan:<br><span style="font-size:36px;letter-spacing:4px;font-weight:800">'+puzzle+'</span>', options, correct:target, wide:false, text:true };
+    return { prompt:'<div>Vul de klank aan:</div><div class="puzzle">'+puzzle+'</div>', options, correct:target, wide:false, text:true };
   }
   // verbind-lijnen: 4 woorden ↔ 4 tweeklanken
   const picked=keys.slice().sort(()=>Math.random()-0.5).slice(0,4);
@@ -2169,10 +2171,10 @@ function genSpelling(progress){
     return { prompt:'Wat is het meervoud van <b>'+w.ev+'</b>?', options:opts, correct:w.mv, wide:true, text:true };
   }
   if(r<0.7){
-    // "a of aa?" — vul klank in
+    // "a of aa?" — vul klank in. 1 streep voor korte klank, 2 voor lange.
     const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
     const w = pick(list);
-    const puzzle = w.ev.replace(/aa|ee|oo|uu|a|e|o|u|i/, '__');
+    const puzzle = w.ev.replace(/aa|ee|oo|uu/, '__').replace(/[aeoui]/, '_');
     const correctKlank = w.klank;
     const kort = ['a','e','o','u','i'];
     const lang = ['aa','ee','oo','uu'];
@@ -2180,7 +2182,7 @@ function genSpelling(progress){
       ? [pick(kort), pick(lang.filter(k=>k!==correctKlank))]
       : [pick(lang), pick(kort.filter(k=>k!==correctKlank))];
     const opts = [correctKlank, ...andere].sort(()=>Math.random()-0.5);
-    return { prompt:'Welke klank hoort in <b>'+w.ev+'</b>?<br><span style="font-size:30px;letter-spacing:3px;font-weight:800">'+puzzle+'</span>', options:opts, correct:correctKlank, wide:false, text:true };
+    return { prompt:'<div>Welke klank hoort hier?</div><div class="puzzle">'+puzzle+'</div>', options:opts, correct:correctKlank, wide:false, text:true };
   }
   // "juist of fout?" — toon een woord, kies "juist" of een foute versie
   const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
@@ -2190,7 +2192,7 @@ function genSpelling(progress){
   if(list===SPELL_KORT) fout = w.ev + 'en'; else fout = w.ev + 'en';
   const showJuist = Math.random()<0.5;
   const shown = showJuist ? juist : fout;
-  return { prompt:'Is dit juist gespeld?<br><span style="font-size:28px;font-weight:800">'+shown+'</span>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:true, text:true };
+  return { prompt:'<div>Is dit juist gespeld?</div><div class="word">'+shown+'</div>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:true, text:true };
 }
 
 // ---- Woordenschat: synoniemen, tegenstellingen, samenstellingen ----
