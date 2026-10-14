@@ -2002,12 +2002,17 @@ function genRek3(progress){
     return { prompt:a+' ? '+b, options:['>','<','='].sort(()=>Math.random()-0.5), correct:a>b?'>':'<', wide:false };
   }
   if(r<0.65){
-    // ordenen van klein naar groot (3 getallen)
-    const nums=[]; while(nums.length<3){ const n=ri(1,20); if(!nums.includes(n)) nums.push(n); }
-    const sorted=nums.slice().sort((a,b)=>a-b);
-    return { prompt:'Welke rij gaat van <b>klein naar groot</b>?',
-      options:[sorted.join(' · '), nums.join(' · '), sorted.slice().reverse().join(' · ')].sort(()=>Math.random()-0.5),
-      correct:sorted.join(' · '), wide:true };
+    // ordenen van klein naar groot (3 getallen) — zorg voor 3 unieke opties
+    let nums, sorted, scrambled;
+    do {
+      nums=[]; while(nums.length<3){ const n=ri(1,20); if(!nums.includes(n)) nums.push(n); }
+      sorted=nums.slice().sort((a,b)=>a-b);
+      scrambled=nums.slice();
+    } while (scrambled.join()===sorted.join() || scrambled.join()===sorted.slice().reverse().join());
+    const reversed=sorted.slice().reverse();
+    const opts=[sorted.join(' · '), scrambled.join(' · '), reversed.join(' · ')].sort(()=>Math.random()-0.5);
+    return { prompt:'Welke rij gaat van klein naar groot?',
+      options:opts, correct:sorted.join(' · '), wide:true, text:true };
   }
   // +/- tot 20 zonder brug (eenheden-som < 10)
   if(Math.random()<0.5){
@@ -2025,8 +2030,8 @@ function genRek4(progress){
   if(r<0.2 && sp>0.05){
     // eerlijk verdelen: 12 koekjes over 3 kinderen
     const groups=pick([2,3,4,5]); const each=ri(2,6); const total=groups*each;
-    return { prompt:total+' koekjes eerlijk verdeeld over '+groups+' kinderen. Hoeveel krijgt elk?',
-      correct:String(each), keyboard:true };
+    return { prompt:total+' koekjes verdeeld over '+groups+' kinderen. Hoeveel krijgt elk?',
+      correct:String(each), keyboard:true, text:true };
   }
   // optellen met brug
   if(Math.random()<0.5){
@@ -2516,7 +2521,7 @@ function renderKeyboard(q, head){
   let typed=''; const correct=q.correct; const maxLen=Math.max(3, String(correct).length+1);
   const qhtml = q.draw
     ? '<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'
-    : '<div class="qbox'+(q.seq?' seq':'')+(q.lees?' lees':'')+'">'+q.prompt+'</div>';
+    : '<div class="qbox'+(q.seq?' seq':'')+(q.lees?' lees':'')+(q.text?' text':'')+'">'+q.prompt+'</div>';
   const keys=['7','8','9','4','5','6','1','2','3','←','0','OK'];
   const keysHtml=keys.map(k=>{
     const cls = k==='OK'?'kb-key kb-ok' : k==='←'?'kb-key kb-del' : 'kb-key';
