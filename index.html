@@ -311,7 +311,7 @@ function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function applySave(data){
   if(!data) return false;
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
-  level=data.level||1; semester=data.semester||2; arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
+  level=data.level||1; semester=currentSemester(); arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.domeColor) ufo.dome=data.domeColor;
   if(data.lightsColor) lightsColor=data.lightsColor;
@@ -409,7 +409,9 @@ const ACCEL=900, FRICTION=1.6;
 let curMaxV=420;
 let playerName='Speler';
 let level=1;    // leerjaar 1..6
-let semester=2; // 1 = begin schooljaar, 2 = einde schooljaar (moeilijker)
+// Semester volgt automatisch het schooljaar: sep–jan = S1, feb–aug = S2
+function currentSemester(){ const m=new Date().getMonth()+1; return (m>=9 || m===1) ? 1 : 2; }
+let semester=currentSemester();
 
 // upgrades (totaal sterren) — type 'color' = kleurkiezer, 'toggle' = aan/uit (+ evt. stijlen)
 const UPGRADES=[
@@ -2432,22 +2434,13 @@ function showStart(returning){
     : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
   const nameField =
     '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
-  const semrow =
-    '<div class="ob-sentence" style="margin-top:12px">Wanneer in het schooljaar?</div>'+
-    '<div class="semrow">'+
-      '<button class="lvlbtn sembtn'+(semester===1?' sel':'')+'" data-s="1">Begin van \'t jaar</button>'+
-      '<button class="lvlbtn sembtn'+(semester===2?' sel':'')+'" data-s="2">Einde van \'t jaar</button>'+
-    '</div>';
   startcard.innerHTML = head + nameField +
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
     '<div class="grade-grid">'+grid+'</div>'+
-    semrow+
     '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>'+
     (returning ? '<br><button class="btn ghost" id="obreset" style="margin-top:10px">Voortgang wissen</button>' : '');
   startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
     startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
-  startcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s);
-    startcard.querySelectorAll('.sembtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
   const rb=document.getElementById('obreset'); if(rb) rb.onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
