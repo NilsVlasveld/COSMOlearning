@@ -289,9 +289,17 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'},
   rek20:{color:'#97C459',core:'#D8EEBF',label:'Rekenen tot 20',icon:'rek20'},
   te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'},
-  twee:{color:'#C58BE8',core:'#E6CFF5',label:'Tweeklanken',icon:'ij'} };
+  twee:{color:'#C58BE8',core:'#E6CFF5',label:'Tweeklanken',icon:'ij'},
+  // LJ2 — 6 rekenen-beams + tafels (volgens Pluspunt-leerplan)
+  rek1:{color:'#F2A65A',core:'#FFD9B0',label:'Rekenen 1',icon:'r1'},
+  rek2:{color:'#97C459',core:'#D8EEBF',label:'Rekenen 2',icon:'r2'},
+  rek3:{color:'#5BA8E8',core:'#C2E1F8',label:'Rekenen 3',icon:'r3'},
+  rek4:{color:'#C58BE8',core:'#E6CFF5',label:'Rekenen 4',icon:'r4'},
+  rek5:{color:'#33C9C6',core:'#BEEDEB',label:'Rekenen 5',icon:'r5'},
+  rekmix:{color:'#F58BB0',core:'#FAD0DF',label:'Rekenen Mix',icon:'mix'},
+  tafels:{color:'#E8B547',core:'#F7E1A6',label:'Tafels',icon:'cross'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -336,13 +344,19 @@ function applySave(data){
 
 // Standaard set van beams (10 vakken, verspreid over de ruimte)
 const STD_BEAMS=[
+  // Oude generieke beams (voor LJ1 en LJ3+)
   {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
   {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
   {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'},
-  {x:1500,y:900,subject:'tafel2'},
-  {x:1800,y:2000,subject:'rek20'},
-  {x:3000,y:1400,subject:'te100'},
-  {x:2600,y:1750,subject:'twee'}
+  // LJ2 — Pluspunt-leerplan beams
+  {x:620,y:820,subject:'rek1'},
+  {x:1200,y:620,subject:'rek2'},
+  {x:1850,y:1200,subject:'rek3'},
+  {x:2600,y:820,subject:'rek4'},
+  {x:3150,y:1550,subject:'rek5'},
+  {x:1550,y:2200,subject:'rekmix'},
+  {x:2250,y:1800,subject:'tafels'},
+  {x:2850,y:2250,subject:'twee'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -393,9 +407,12 @@ let active=0, cur=dims[active]; cur.visited=true;
 
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
+// Welke vakken horen bij welk leerjaar
+const LJ2_SUBJECTS = new Set(['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','vraagstukken','logica','lezen','twee','ruimte']);
 function beamActive(b){
-  if(b.subject==='tellen' && level===2) return false;
-  if(['tafel2','rek20','te100','twee'].includes(b.subject) && level!==2) return false;
+  if(level===2) return LJ2_SUBJECTS.has(b.subject);
+  // Andere leerjaren: oude beams (zonder de LJ2-specifieke)
+  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels'].includes(b.subject)) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -411,6 +428,12 @@ let playerName='Speler';
 let level=1;    // leerjaar 1..6
 // Semester volgt automatisch het schooljaar: sep–jan = S1, feb–aug = S2
 function currentSemester(){ const m=new Date().getMonth()+1; return (m>=9 || m===1) ? 1 : 2; }
+// 0 (sep) → 1 (jun). Juli/aug = 1 (einde schooljaar).
+function schoolProgress(){
+  const m=new Date().getMonth()+1;
+  const idx = (m>=9) ? m-9 : m+3; // sep=0, okt=1, …, jun=9, jul=10, aug=11
+  return Math.max(0, Math.min(1, idx/9));
+}
 let semester=currentSemester();
 
 // upgrades (totaal sterren) — type 'color' = kleurkiezer, 'toggle' = aan/uit (+ evt. stijlen)
@@ -823,6 +846,8 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='blocks'){ // T-E blokjes
     g.lineWidth=1.6; g.strokeRect(-9,-6,4,12); g.strokeRect(-4,-6,4,12); g.strokeRect(1,-6,4,12); g.strokeRect(6,-2,5,5); }
   else if(s.icon==='ij'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ij',0,1); }
+  else if(s.icon==='r1'||s.icon==='r2'||s.icon==='r3'||s.icon==='r4'||s.icon==='r5'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(s.icon.slice(1),0,1); }
+  else if(s.icon==='mix'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('MIX',0,1); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1880,8 +1905,218 @@ function genTweeklanken(progress){
   const right=picked.map(k=>({text:k,value:k})).sort(()=>Math.random()-0.5);
   return { connect:true, prompt:'Verbind elk woord met de juiste klank', left, right };
 }
+// ========================================
+// LJ2 PLUSPUNT — 6 Rekenen-beams + Tafels
+// Moeilijkheid groeit met schoolProgress() (sep=0 → jun=1)
+// ========================================
+
+// Rekenen 1 — Splitsen & aanvullen tot 10 (Blok 1 Les 1)
+function genRek1(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.3){
+    // tienvriendje: __ + x = 10
+    const a=ri(1,9);
+    return { prompt:a+' + __ = 10', correct:String(10-a), keyboard:true };
+  }
+  if(r<0.55){
+    // aanvullen: a + __ = b
+    const b=ri(5,10); const a=ri(1,b-1);
+    return { prompt:a+' + __ = '+b, correct:String(b-a), keyboard:true };
+  }
+  if(r<0.75){
+    // splits: welk getal bij deze splitsing?
+    const whole=ri(5,10); const left=ri(1,whole-1); const right=whole-left;
+    return { prompt:'Splits '+whole+' in '+left+' en __', correct:String(right), keyboard:true };
+  }
+  if(r<0.9 && sp>0.1){
+    // aftrekken aanvul: 10 - __ = x
+    const ans=ri(1,9);
+    return { prompt:'10 − __ = '+ans, correct:String(10-ans), keyboard:true };
+  }
+  // directe +/- tot 10
+  if(Math.random()<0.5){ const a=ri(1,8),b=ri(1,10-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+  const a=ri(2,10),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 2 — +/- tot 10 met 2 en 3 termen (Blok 1 Les 2)
+function genRek2(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.5 || sp<0.1){
+    // 2-term
+    if(Math.random()<0.5){ const a=ri(1,8),b=ri(1,10-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+    const a=ri(3,10),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+  }
+  // 3-term
+  const kind=Math.random();
+  if(kind<0.4){ const a=ri(1,5),b=ri(1,4),c=ri(1,10-a-b); return { prompt:a+' + '+b+' + '+c+' = ?', correct:String(a+b+c), keyboard:true }; }
+  if(kind<0.75){ const a=ri(7,10),b=ri(1,3),c=ri(1,a-b-1); return { prompt:a+' − '+b+' − '+c+' = ?', correct:String(a-b-c), keyboard:true }; }
+  // + en - gemengd
+  const a=ri(3,8),b=ri(1,5),c=ri(1,Math.max(1,a+b-1));
+  return { prompt:a+' + '+b+' − '+c+' = ?', correct:String(a+b-c), keyboard:true };
+}
+
+// Rekenen 3 — Getallen tot 20 + twintigveld + +/- zonder brug (Blok 1 Les 3-7)
+function drawTwintigveld(g,w,h,n){
+  // 2x10 rooster, kleur eerste n hokjes
+  const cols=10, rows=2;
+  const pad=10; const cw=(w-pad*2)/cols, ch=Math.min(cw,(h-pad*2)/rows);
+  const tot=cw*cols; const ox=(w-tot)/2; const oy=(h-ch*rows)/2;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const x=ox+c*cw, y=oy+r*ch;
+    const idx=r*cols+c;
+    g.fillStyle=idx<n?'#F58BB0':'#F5EFE3';
+    g.fillRect(x+2,y+2,cw-4,ch-4);
+    g.strokeStyle='#2A1E5E'; g.lineWidth=2; g.strokeRect(x+2,y+2,cw-4,ch-4);
+  }
+}
+function genRek3(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.25){
+    // twintigveld: hoeveel kleurtjes zie je?
+    const n=ri(5,20);
+    return { prompt:'Hoeveel hokjes zijn gekleurd?', correct:String(n), keyboard:true,
+      draw:(g,w,h)=>drawTwintigveld(g,w,h,n) };
+  }
+  if(r<0.45){
+    // vergelijken > of <
+    let a,b; do{ a=ri(1,20); b=ri(1,20); } while(a===b);
+    return { prompt:a+' ? '+b, options:['>','<','='].sort(()=>Math.random()-0.5), correct:a>b?'>':'<', wide:false };
+  }
+  if(r<0.65){
+    // ordenen van klein naar groot (3 getallen)
+    const nums=[]; while(nums.length<3){ const n=ri(1,20); if(!nums.includes(n)) nums.push(n); }
+    const sorted=nums.slice().sort((a,b)=>a-b);
+    return { prompt:'Welke rij gaat van <b>klein naar groot</b>?',
+      options:[sorted.join(' · '), nums.join(' · '), sorted.slice().reverse().join(' · ')].sort(()=>Math.random()-0.5),
+      correct:sorted.join(' · '), wide:true };
+  }
+  // +/- tot 20 zonder brug (eenheden-som < 10)
+  if(Math.random()<0.5){
+    let a,b; do{ a=ri(1,19); b=ri(1,20-a); } while((a%10)+(b%10)>=10);
+    return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true };
+  }
+  let a,b; do{ a=ri(5,20); b=ri(1,a); } while((a%10)<(b%10));
+  return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 4 — +/- tot 20 met brug + eerlijk verdelen (Blok 2 Les 3-5 + Blok 1 Les 8)
+function genRek4(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.2 && sp>0.05){
+    // eerlijk verdelen: 12 koekjes over 3 kinderen
+    const groups=pick([2,3,4,5]); const each=ri(2,6); const total=groups*each;
+    return { prompt:total+' koekjes eerlijk verdeeld over '+groups+' kinderen. Hoeveel krijgt elk?',
+      correct:String(each), keyboard:true };
+  }
+  // optellen met brug
+  if(Math.random()<0.5){
+    let a,b; do{ a=ri(4,15); b=ri(3,15); } while((a%10)+(b%10)<10 || a+b>20);
+    return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true };
+  }
+  // aftrekken met brug (eenheden a < eenheden b)
+  let a,b; do{ a=ri(11,20); b=ri(3,a-1); } while((a%10)>=(b%10));
+  return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 5 — Getallen tot 100 + T+E + honderdveld (Blok 2 Les 6-7)
+function drawHonderdveld(g,w,h,marked){
+  const cols=10, rows=10;
+  const size=Math.min((w-10)/cols,(h-10)/rows);
+  const ox=(w-size*cols)/2, oy=(h-size*rows)/2;
+  g.font='bold 10px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const n=r*10+c+1;
+    const x=ox+c*size, y=oy+r*size;
+    g.fillStyle=n===marked?'#F58BB0':'#F5EFE3';
+    g.fillRect(x,y,size-1,size-1);
+    g.strokeStyle='#2A1E5E'; g.lineWidth=1; g.strokeRect(x,y,size-1,size-1);
+    g.fillStyle=n===marked?'#fff':'#2A1E5E';
+    g.fillText(n, x+size/2, y+size/2);
+  }
+}
+function genRek5(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.25){
+    // honderdveld: welk getal is gekleurd?
+    const n=ri(1,100);
+    return { prompt:'Welk getal is gekleurd?', correct:String(n), keyboard:true,
+      draw:(g,w,h)=>drawHonderdveld(g,w,h,n), wide:true };
+  }
+  if(r<0.45){
+    // T + E samen
+    const T=ri(1,9), E=ri(0,9);
+    if(Math.random()<0.5) return { prompt:T+' tientallen + '+E+' eenheden = ?', correct:String(T*10+E), keyboard:true };
+    const num=T*10+E;
+    return { prompt:'Hoeveel tientallen in '+num+'?', correct:String(T), keyboard:true };
+  }
+  if(r<0.6){
+    // vergelijken > of <
+    let a,b; do{ a=ri(20,99); b=ri(20,99); } while(a===b);
+    return { prompt:a+' ? '+b, options:['>','<','='].sort(()=>Math.random()-0.5), correct:a>b?'>':'<', wide:false };
+  }
+  if(r<0.78){
+    // getal vooraf/na: komt na 56 → 57
+    const n=ri(10,98);
+    if(Math.random()<0.5) return { prompt:'Welk getal komt <b>na</b> '+n+'?', correct:String(n+1), keyboard:true };
+    return { prompt:'Welk getal komt <b>voor</b> '+n+'?', correct:String(n-1), keyboard:true };
+  }
+  // optellen tienvoud
+  const T=ri(2,8), E=ri(1,9), b=ri(1,9);
+  return { prompt:(T*10+E)+' + '+b+' = ?', correct:String(T*10+E+b), keyboard:true };
+}
+
+// Rekenen Mix — random een van rek1..rek5 (gewogen naar maand)
+function genRekMix(progress){
+  const sp=schoolProgress();
+  // Vroeg in jaar: meer rek1/2; later ook rek3/4/5
+  const weights = sp<0.15 ? [0.35,0.35,0.2,0.1,0] :
+                  sp<0.35 ? [0.25,0.25,0.25,0.15,0.1] :
+                  sp<0.55 ? [0.2,0.2,0.25,0.2,0.15] :
+                            [0.15,0.15,0.25,0.25,0.2];
+  let r=Math.random(), acc=0;
+  const gens=[genRek1,genRek2,genRek3,genRek4,genRek5];
+  for(let i=0;i<5;i++){ acc+=weights[i]; if(r<acc) return gens[i](progress); }
+  return genRek3(progress);
+}
+
+// Tafels — maaltafels en deeltafels, groeit per maand
+// sep=×2, okt=+÷2, nov=+×10, dec=+×5, feb=+×3, mrt=+×4, apr=+×1 etc.
+function activeTafels(){
+  const sp=schoolProgress();
+  const list=[2]; // sep
+  if(sp>=0.08) list.push('÷2');       // okt
+  if(sp>=0.19) list.push(10,'÷10');   // nov
+  if(sp>=0.30) list.push(5,'÷5');     // dec
+  if(sp>=0.52) list.push(3,'÷3');     // feb
+  if(sp>=0.63) list.push(4,'÷4');     // mrt
+  if(sp>=0.74) list.push(1,'÷1');     // apr
+  return list;
+}
+function genTafels(progress){
+  const act=activeTafels();
+  const choice=pick(act);
+  const b=ri(1,10);
+  if(typeof choice==='string' && choice.startsWith('÷')){
+    const t=parseInt(choice.slice(1));
+    return { prompt:(b*t)+' : '+t+' = ?', correct:String(b), keyboard:true };
+  }
+  return { prompt:b+' × '+choice+' = ?', correct:String(b*choice), keyboard:true };
+}
+
 function makeQuestion(subject, progress){
   progress = progress||0;
+  if(subject==='rek1') return genRek1(progress);
+  if(subject==='rek2') return genRek2(progress);
+  if(subject==='rek3') return genRek3(progress);
+  if(subject==='rek4') return genRek4(progress);
+  if(subject==='rek5') return genRek5(progress);
+  if(subject==='rekmix') return genRekMix(progress);
+  if(subject==='tafels') return genTafels(progress);
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
   if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, correct:String(d.ans), keyboard:true }; }
   if(subject==='klok') return genKlok();
