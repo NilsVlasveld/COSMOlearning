@@ -297,9 +297,13 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   rek4:{color:'#C58BE8',core:'#E6CFF5',label:'Rekenen 4',icon:'r4'},
   rek5:{color:'#33C9C6',core:'#BEEDEB',label:'Rekenen 5',icon:'r5'},
   rekmix:{color:'#F58BB0',core:'#FAD0DF',label:'Rekenen Mix',icon:'mix'},
-  tafels:{color:'#E8B547',core:'#F7E1A6',label:'Tafels',icon:'cross'} };
+  tafels:{color:'#E8B547',core:'#F7E1A6',label:'Tafels',icon:'cross'},
+  // LJ2 Nederlands
+  spelling:{color:'#F2A65A',core:'#FFD9B0',label:'Spelling',icon:'aa'},
+  woord:{color:'#6AD1A8',core:'#C6EFDD',label:'Woordenschat',icon:'ws'},
+  taal:{color:'#5BA8E8',core:'#C2E1F8',label:'Taal',icon:'de'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','spelling','woord','taal'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -356,7 +360,10 @@ const STD_BEAMS=[
   {x:3150,y:1550,subject:'rek5'},
   {x:1550,y:2200,subject:'rekmix'},
   {x:2250,y:1800,subject:'tafels'},
-  {x:2850,y:2250,subject:'twee'}
+  {x:2850,y:2250,subject:'twee'},
+  {x:450,y:1600,subject:'spelling'},
+  {x:950,y:2050,subject:'woord'},
+  {x:1550,y:450,subject:'taal'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -408,11 +415,11 @@ let active=0, cur=dims[active]; cur.visited=true;
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
 // Welke vakken horen bij welk leerjaar
-const LJ2_SUBJECTS = new Set(['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','vraagstukken','logica','lezen','twee','ruimte']);
+const LJ2_SUBJECTS = new Set(['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','vraagstukken','logica','lezen','twee','ruimte','spelling','woord','taal']);
 function beamActive(b){
   if(level===2) return LJ2_SUBJECTS.has(b.subject);
   // Andere leerjaren: oude beams (zonder de LJ2-specifieke)
-  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels'].includes(b.subject)) return false;
+  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','spelling','woord','taal'].includes(b.subject)) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -848,6 +855,9 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='ij'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ij',0,1); }
   else if(s.icon==='r1'||s.icon==='r2'||s.icon==='r3'||s.icon==='r4'||s.icon==='r5'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(s.icon.slice(1),0,1); }
   else if(s.icon==='mix'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('MIX',0,1); }
+  else if(s.icon==='aa'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('aa',0,1); }
+  else if(s.icon==='ws'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ABC',0,1); }
+  else if(s.icon==='de'){ g.font='800 14px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('de',0,1); }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1910,50 +1920,54 @@ function genTweeklanken(progress){
 // Moeilijkheid groeit met schoolProgress() (sep=0 → jun=1)
 // ========================================
 
-// Rekenen 1 — Splitsen & aanvullen tot 10 (Blok 1 Les 1)
+// Rekenen 1 — Splitsen & aanvullen (tot 10 én tot 20/30, groeit per maand)
 function genRek1(progress){
   const sp=schoolProgress();
+  const max = sp<0.1 ? 10 : sp<0.4 ? 20 : 30;
   const r=Math.random();
-  if(r<0.3){
-    // tienvriendje: __ + x = 10
-    const a=ri(1,9);
-    return { prompt:a+' + __ = 10', correct:String(10-a), keyboard:true };
+  if(r<0.25){
+    // tienvriendje / twintigvriendje: __ + x = 10 of 20
+    const target = (sp>0.15 && Math.random()<0.4) ? 20 : 10;
+    const a=ri(1,target-1);
+    return { prompt:a+' + __ = '+target, correct:String(target-a), keyboard:true };
   }
-  if(r<0.55){
+  if(r<0.5){
     // aanvullen: a + __ = b
-    const b=ri(5,10); const a=ri(1,b-1);
+    const b=ri(Math.max(5,Math.floor(max*0.4)),max); const a=ri(1,b-1);
     return { prompt:a+' + __ = '+b, correct:String(b-a), keyboard:true };
   }
-  if(r<0.75){
-    // splits: welk getal bij deze splitsing?
-    const whole=ri(5,10); const left=ri(1,whole-1); const right=whole-left;
+  if(r<0.7){
+    // splits
+    const whole=ri(5,max); const left=ri(1,whole-1); const right=whole-left;
     return { prompt:'Splits '+whole+' in '+left+' en __', correct:String(right), keyboard:true };
   }
-  if(r<0.9 && sp>0.1){
-    // aftrekken aanvul: 10 - __ = x
-    const ans=ri(1,9);
-    return { prompt:'10 − __ = '+ans, correct:String(10-ans), keyboard:true };
+  if(r<0.85){
+    // aftrekken aanvul: 20 - __ = x
+    const base=(sp>0.15 && Math.random()<0.4)?20:10;
+    const ans=ri(1,base-1);
+    return { prompt:base+' − __ = '+ans, correct:String(base-ans), keyboard:true };
   }
-  // directe +/- tot 10
-  if(Math.random()<0.5){ const a=ri(1,8),b=ri(1,10-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
-  const a=ri(2,10),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+  // directe +/- tot max
+  if(Math.random()<0.5){ const a=ri(1,max-1),b=ri(1,max-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+  const a=ri(3,max),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
 }
 
-// Rekenen 2 — +/- tot 10 met 2 en 3 termen (Blok 1 Les 2)
+// Rekenen 2 — +/- met 2 en 3 termen, bereik groeit per maand
 function genRek2(progress){
   const sp=schoolProgress();
+  const max = sp<0.1 ? 10 : sp<0.4 ? 20 : 30;
   const r=Math.random();
-  if(r<0.5 || sp<0.1){
+  if(r<0.35){
     // 2-term
-    if(Math.random()<0.5){ const a=ri(1,8),b=ri(1,10-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
-    const a=ri(3,10),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+    if(Math.random()<0.5){ const a=ri(2,max-1),b=ri(1,max-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+    const a=ri(5,max),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
   }
   // 3-term
   const kind=Math.random();
-  if(kind<0.4){ const a=ri(1,5),b=ri(1,4),c=ri(1,10-a-b); return { prompt:a+' + '+b+' + '+c+' = ?', correct:String(a+b+c), keyboard:true }; }
-  if(kind<0.75){ const a=ri(7,10),b=ri(1,3),c=ri(1,a-b-1); return { prompt:a+' − '+b+' − '+c+' = ?', correct:String(a-b-c), keyboard:true }; }
+  if(kind<0.4){ const a=ri(2,Math.floor(max*0.4)),b=ri(1,Math.floor(max*0.3)),c=ri(1,max-a-b); return { prompt:a+' + '+b+' + '+c+' = ?', correct:String(a+b+c), keyboard:true }; }
+  if(kind<0.75){ const a=ri(Math.floor(max*0.6),max),b=ri(1,Math.floor(max*0.25)),c=ri(1,a-b-1); return { prompt:a+' − '+b+' − '+c+' = ?', correct:String(a-b-c), keyboard:true }; }
   // + en - gemengd
-  const a=ri(3,8),b=ri(1,5),c=ri(1,Math.max(1,a+b-1));
+  const a=ri(3,Math.floor(max*0.7)),b=ri(1,Math.floor(max*0.3)),c=ri(1,Math.max(1,a+b-1));
   return { prompt:a+' + '+b+' − '+c+' = ?', correct:String(a+b-c), keyboard:true };
 }
 
@@ -2074,10 +2088,10 @@ function genRek5(progress){
 function genRekMix(progress){
   const sp=schoolProgress();
   // Vroeg in jaar: meer rek1/2; later ook rek3/4/5
-  const weights = sp<0.15 ? [0.35,0.35,0.2,0.1,0] :
-                  sp<0.35 ? [0.25,0.25,0.25,0.15,0.1] :
-                  sp<0.55 ? [0.2,0.2,0.25,0.2,0.15] :
-                            [0.15,0.15,0.25,0.25,0.2];
+  const weights = sp<0.15 ? [0.2,0.2,0.3,0.2,0.1] :
+                  sp<0.35 ? [0.15,0.2,0.3,0.2,0.15] :
+                  sp<0.55 ? [0.15,0.15,0.25,0.25,0.2] :
+                            [0.1,0.15,0.2,0.3,0.25];
   let r=Math.random(), acc=0;
   const gens=[genRek1,genRek2,genRek3,genRek4,genRek5];
   for(let i=0;i<5;i++){ acc+=weights[i]; if(r<acc) return gens[i](progress); }
@@ -2108,6 +2122,156 @@ function genTafels(progress){
   return { prompt:b+' × '+choice+' = ?', correct:String(b*choice), keyboard:true };
 }
 
+// ========================================
+// LJ2 NEDERLANDS — Spelling · Woordenschat · Taal
+// ========================================
+
+// ---- Spelling: lange/korte klanken + verdubbeling/verenkeling ----
+// korte klank → verdubbel medeklinker in meervoud: bal → ballen, kat → katten
+// lange klank → verenkel klinker in meervoud: baan → banen, poot → poten
+const SPELL_KORT=[
+  {ev:'bal',mv:'ballen',klank:'a'},{ev:'kat',mv:'katten',klank:'a'},{ev:'man',mv:'mannen',klank:'a'},
+  {ev:'pet',mv:'petten',klank:'e'},{ev:'bos',mv:'bossen',klank:'o'},{ev:'bus',mv:'bussen',klank:'u'},
+  {ev:'pop',mv:'poppen',klank:'o'},{ev:'kip',mv:'kippen',klank:'i'},{ev:'rat',mv:'ratten',klank:'a'},
+  {ev:'vis',mv:'vissen',klank:'i'}
+];
+const SPELL_LANG=[
+  {ev:'baan',mv:'banen',klank:'aa'},{ev:'poot',mv:'poten',klank:'oo'},{ev:'muur',mv:'muren',klank:'uu'},
+  {ev:'peer',mv:'peren',klank:'ee'},{ev:'boom',mv:'bomen',klank:'oo'},{ev:'maan',mv:'manen',klank:'aa'},
+  {ev:'vuur',mv:'vuren',klank:'uu'},{ev:'veer',mv:'veren',klank:'ee'}
+];
+// korte klank in open lettergreep (woorden met aa/oo/ee/uu geschreven kort uitgesproken) — niet van toepassing bij LJ2
+function genSpelling(progress){
+  const r=Math.random();
+  if(r<0.4){
+    // "wat is het meervoud van X?" (zoek verdubbeling of verenkeling)
+    const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+    const w = pick(list);
+    // 3 varianten als opties
+    let wrong1, wrong2;
+    if(list===SPELL_KORT){
+      // juist = verdubbeling (ballen); fouten: enkele medeklinker, verenkeling
+      wrong1 = w.ev + 'en';                    // bal → balen
+      wrong2 = w.ev.slice(0,-1) + w.ev.slice(-1) + 's'; // bal → bals
+    } else {
+      // juist = verenkeling (banen); fouten: dubbele klinker, verdubbeling
+      wrong1 = w.ev + 'en';                    // baan → baanen
+      wrong2 = w.ev.replace(/aa|ee|oo|uu/, m=>m[0]) + w.ev.slice(-1)+'en'; // baan → bannen
+    }
+    const opts = [...new Set([w.mv, wrong1, wrong2])].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat is het meervoud van <b>'+w.ev+'</b>?', options:opts, correct:w.mv, wide:true };
+  }
+  if(r<0.7){
+    // "a of aa?" — vul klank in
+    const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+    const w = pick(list);
+    const puzzle = w.ev.replace(/aa|ee|oo|uu|a|e|o|u|i/, '__');
+    const correctKlank = w.klank;
+    const kort = ['a','e','o','u','i'];
+    const lang = ['aa','ee','oo','uu'];
+    const andere = (correctKlank.length===2)
+      ? [pick(kort), pick(lang.filter(k=>k!==correctKlank))]
+      : [pick(lang), pick(kort.filter(k=>k!==correctKlank))];
+    const opts = [correctKlank, ...andere].sort(()=>Math.random()-0.5);
+    return { prompt:'Welke klank hoort in <b>'+w.ev+'</b>?<br><span style="font-size:30px;letter-spacing:3px;font-weight:800">'+puzzle+'</span>', options:opts, correct:correctKlank, wide:false };
+  }
+  // "juist of fout?" — toon een woord, kies "juist" of een foute versie
+  const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+  const w = pick(list);
+  const juist = w.mv;
+  let fout;
+  if(list===SPELL_KORT) fout = w.ev + 'en'; else fout = w.ev + 'en';
+  const showJuist = Math.random()<0.5;
+  const shown = showJuist ? juist : fout;
+  return { prompt:'Is dit juist gespeld?<br><span style="font-size:28px;font-weight:800">'+shown+'</span>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:false };
+}
+
+// ---- Woordenschat: synoniemen, tegenstellingen, samenstellingen ----
+const SYN=[
+  ['blij','vrolijk'],['boos','kwaad'],['bang','angstig'],['snel','vlug'],
+  ['mooi','prachtig'],['groot','enorm'],['klein','mini'],['stil','rustig'],
+  ['lief','aardig'],['vies','smerig'],['moe','slaperig'],['stout','ondeugend']
+];
+const TEG=[
+  ['groot','klein'],['hoog','laag'],['warm','koud'],['snel','traag'],
+  ['dik','dun'],['oud','jong'],['lang','kort'],['blij','verdrietig'],
+  ['licht','donker'],['vol','leeg'],['open','dicht'],['nat','droog'],
+  ['sterk','zwak'],['hard','zacht']
+];
+const SAM=[ // samenstellingen: deel1 + deel2 = woord
+  ['fiets','bel','fietsbel'],['tand','borstel','tandborstel'],['boek','tas','boekentas'],
+  ['speel','goed','speelgoed'],['brand','weer','brandweer'],['school','bank','schoolbank'],
+  ['voet','bal','voetbal'],['honden','hok','hondenhok'],['zonne','bloem','zonnebloem'],
+  ['melk','pak','melkpak'],['appel','sap','appelsap']
+];
+function genWoord(progress){
+  const r=Math.random();
+  if(r<0.35){
+    // synoniem
+    const [a,b] = pick(SYN);
+    const others = SYN.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
+    const opts = [b, ...others].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat betekent <b>hetzelfde</b> als "'+a+'"?', options:opts, correct:b, wide:true };
+  }
+  if(r<0.7){
+    // tegenstelling
+    const [a,b] = pick(TEG);
+    const others = TEG.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
+    const opts = [b, ...others].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat is het <b>tegenovergestelde</b> van "'+a+'"?', options:opts, correct:b, wide:true };
+  }
+  // samenstelling
+  const [d1,d2,full] = pick(SAM);
+  const others = SAM.filter(s=>s[2]!==full).sort(()=>Math.random()-0.5).slice(0,2).map(s=>s[2]);
+  const opts = [full, ...others].sort(()=>Math.random()-0.5);
+  return { prompt:'<b>'+d1+'</b> + <b>'+d2+'</b> = ?', options:opts, correct:full, wide:true };
+}
+
+// ---- Taal: lidwoord · enkel/meervoud · hoofdletter+punt ----
+const DE_WORDEN=['boom','stoel','deur','auto','hond','tafel','jas','bal','tuin','klas','meester','bloem','trein','straat','vriend'];
+const HET_WORDEN=['huis','boek','paard','raam','kind','spel','feest','bed','eten','schip','meisje','jongetje','dier','potlood','blad'];
+const MV_IRRG=[ // onregelmatige meervouden
+  ['kind','kinderen'],['ei','eieren'],['koe','koeien'],['vlo','vlooien'],['stad','steden'],['schip','schepen']
+];
+function genTaal(progress){
+  const r=Math.random();
+  if(r<0.4){
+    // de of het?
+    if(Math.random()<0.5){
+      const w = pick(DE_WORDEN);
+      return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'de', wide:false };
+    }
+    const w = pick(HET_WORDEN);
+    return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'het', wide:false };
+  }
+  if(r<0.65){
+    // enkel of meervoud
+    const woorden = ['boek','boeken','kat','katten','auto','autos','stoel','stoelen','jas','jassen'];
+    const w = pick(woorden);
+    const isMv = w.endsWith('en') || w.endsWith('os');
+    return { prompt:'Is "<b>'+w+'</b>" <b>enkelvoud</b> of <b>meervoud</b>?', options:['enkelvoud','meervoud'], correct:isMv?'meervoud':'enkelvoud', wide:false };
+  }
+  if(r<0.85){
+    // welke zin begint goed? (hoofdletter + eindigt op punt)
+    const zinnen=[
+      ['De hond blaft.','de hond blaft.','De hond blaft','de hond blaft'],
+      ['Mama kookt soep.','mama kookt soep.','Mama kookt soep','mama kookt soep'],
+      ['Ik ga naar school.','ik ga naar school.','Ik ga naar school','ik ga naar school'],
+      ['De zon schijnt.','de zon schijnt.','De zon schijnt','de zon schijnt']
+    ];
+    const z = pick(zinnen);
+    const juist = z[0];
+    const opties = [juist, z[1], z[2]].sort(()=>Math.random()-0.5);
+    return { prompt:'Welke zin is <b>juist</b> geschreven?', options:opties, correct:juist, wide:true };
+  }
+  // onregelmatig meervoud
+  const [ev,mv] = pick(MV_IRRG);
+  const fake1 = ev + 'en';
+  const fake2 = ev + 's';
+  const opts = [...new Set([mv, fake1, fake2])].sort(()=>Math.random()-0.5);
+  return { prompt:'Wat is het meervoud van <b>'+ev+'</b>?', options:opts, correct:mv, wide:true };
+}
+
 function makeQuestion(subject, progress){
   progress = progress||0;
   if(subject==='rek1') return genRek1(progress);
@@ -2117,6 +2281,9 @@ function makeQuestion(subject, progress){
   if(subject==='rek5') return genRek5(progress);
   if(subject==='rekmix') return genRekMix(progress);
   if(subject==='tafels') return genTafels(progress);
+  if(subject==='spelling') return genSpelling(progress);
+  if(subject==='woord') return genWoord(progress);
+  if(subject==='taal') return genTaal(progress);
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
   if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, correct:String(d.ans), keyboard:true }; }
   if(subject==='klok') return genKlok();
