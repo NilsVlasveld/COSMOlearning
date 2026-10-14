@@ -2112,12 +2112,11 @@ function genRekMix(progress){
 function activeTafels(){
   const sp=schoolProgress();
   const list=[2]; // sep
-  if(sp>=0.08) list.push('÷2');       // okt
-  if(sp>=0.19) list.push(10,'÷10');   // nov
-  if(sp>=0.30) list.push(5,'÷5');     // dec
-  if(sp>=0.52) list.push(3,'÷3');     // feb
-  if(sp>=0.63) list.push(4,'÷4');     // mrt
-  if(sp>=0.74) list.push(1,'÷1');     // apr
+  if(sp>=0.08) list.push('÷2', 10, '÷10'); // okt (×10 en ÷10 er al bij)
+  if(sp>=0.30) list.push(5,'÷5');          // dec
+  if(sp>=0.52) list.push(3,'÷3');          // feb
+  if(sp>=0.63) list.push(4,'÷4');          // mrt
+  if(sp>=0.74) list.push(1,'÷1');          // apr
   return list;
 }
 function genTafels(progress){
