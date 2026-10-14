@@ -67,6 +67,8 @@
   .qbox.seq { font-size:24px; letter-spacing:1px; }
   .qbox.draw { padding:12px; min-height:0; }
   .qbox.lees { flex-direction:column; gap:10px; font-size:17px; line-height:1.4; padding:16px 16px; }
+  .qbox.text { font-size:19px; line-height:1.4; padding:16px 18px; min-height:60px; text-align:center; word-break:normal; overflow-wrap:break-word; }
+  .qbox.text b { font-weight:800; }
   .lees-text { font-weight:600; }
   .lees-q { font-weight:800; }
   .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
@@ -1897,7 +1899,7 @@ function genTweeklanken(progress){
     if(!wrong1) wrong1=pick(TWEEKLANKEN[kA]);
     if(!wrong2) wrong2=pick(TWEEKLANKEN[kB]);
     const options=[correct,wrong1,wrong2].sort(()=>Math.random()-0.5);
-    return { prompt:'Welk woord bevat de klank <b>'+target+'</b>?', options, correct, wide:false };
+    return { prompt:'Welk woord bevat de klank <b>'+target+'</b>?', options, correct, wide:true, text:true };
   }
   if(r<0.78){
     // vul de ontbrekende tweeklank in
@@ -1907,7 +1909,7 @@ function genTweeklanken(progress){
     const puzzle=word.replace(target,'__');
     const others=keys.filter(k=>k!==target).sort(()=>Math.random()-0.5).slice(0,2);
     const options=[target,others[0],others[1]].sort(()=>Math.random()-0.5);
-    return { prompt:'Vul de klank aan:<br><span style="font-size:36px;letter-spacing:4px;font-weight:800">'+puzzle+'</span>', options, correct:target, wide:false };
+    return { prompt:'Vul de klank aan:<br><span style="font-size:36px;letter-spacing:4px;font-weight:800">'+puzzle+'</span>', options, correct:target, wide:false, text:true };
   }
   // verbind-lijnen: 4 woorden ↔ 4 tweeklanken
   const picked=keys.slice().sort(()=>Math.random()-0.5).slice(0,4);
@@ -2159,7 +2161,7 @@ function genSpelling(progress){
       wrong2 = w.ev.replace(/aa|ee|oo|uu/, m=>m[0]) + w.ev.slice(-1)+'en'; // baan → bannen
     }
     const opts = [...new Set([w.mv, wrong1, wrong2])].sort(()=>Math.random()-0.5);
-    return { prompt:'Wat is het meervoud van <b>'+w.ev+'</b>?', options:opts, correct:w.mv, wide:true };
+    return { prompt:'Wat is het meervoud van <b>'+w.ev+'</b>?', options:opts, correct:w.mv, wide:true, text:true };
   }
   if(r<0.7){
     // "a of aa?" — vul klank in
@@ -2173,7 +2175,7 @@ function genSpelling(progress){
       ? [pick(kort), pick(lang.filter(k=>k!==correctKlank))]
       : [pick(lang), pick(kort.filter(k=>k!==correctKlank))];
     const opts = [correctKlank, ...andere].sort(()=>Math.random()-0.5);
-    return { prompt:'Welke klank hoort in <b>'+w.ev+'</b>?<br><span style="font-size:30px;letter-spacing:3px;font-weight:800">'+puzzle+'</span>', options:opts, correct:correctKlank, wide:false };
+    return { prompt:'Welke klank hoort in <b>'+w.ev+'</b>?<br><span style="font-size:30px;letter-spacing:3px;font-weight:800">'+puzzle+'</span>', options:opts, correct:correctKlank, wide:false, text:true };
   }
   // "juist of fout?" — toon een woord, kies "juist" of een foute versie
   const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
@@ -2183,7 +2185,7 @@ function genSpelling(progress){
   if(list===SPELL_KORT) fout = w.ev + 'en'; else fout = w.ev + 'en';
   const showJuist = Math.random()<0.5;
   const shown = showJuist ? juist : fout;
-  return { prompt:'Is dit juist gespeld?<br><span style="font-size:28px;font-weight:800">'+shown+'</span>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:false };
+  return { prompt:'Is dit juist gespeld?<br><span style="font-size:28px;font-weight:800">'+shown+'</span>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:true, text:true };
 }
 
 // ---- Woordenschat: synoniemen, tegenstellingen, samenstellingen ----
@@ -2211,20 +2213,20 @@ function genWoord(progress){
     const [a,b] = pick(SYN);
     const others = SYN.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
     const opts = [b, ...others].sort(()=>Math.random()-0.5);
-    return { prompt:'Wat betekent <b>hetzelfde</b> als "'+a+'"?', options:opts, correct:b, wide:true };
+    return { prompt:'Wat betekent <b>hetzelfde</b> als "'+a+'"?', options:opts, correct:b, wide:true, text:true };
   }
   if(r<0.7){
     // tegenstelling
     const [a,b] = pick(TEG);
     const others = TEG.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
     const opts = [b, ...others].sort(()=>Math.random()-0.5);
-    return { prompt:'Wat is het <b>tegenovergestelde</b> van "'+a+'"?', options:opts, correct:b, wide:true };
+    return { prompt:'Wat is het <b>tegenovergestelde</b> van "'+a+'"?', options:opts, correct:b, wide:true, text:true };
   }
   // samenstelling
   const [d1,d2,full] = pick(SAM);
   const others = SAM.filter(s=>s[2]!==full).sort(()=>Math.random()-0.5).slice(0,2).map(s=>s[2]);
   const opts = [full, ...others].sort(()=>Math.random()-0.5);
-  return { prompt:'<b>'+d1+'</b> + <b>'+d2+'</b> = ?', options:opts, correct:full, wide:true };
+  return { prompt:'<b>'+d1+'</b> + <b>'+d2+'</b> = ?', options:opts, correct:full, wide:true, text:true };
 }
 
 // ---- Taal: lidwoord · enkel/meervoud · hoofdletter+punt ----
@@ -2239,17 +2241,17 @@ function genTaal(progress){
     // de of het?
     if(Math.random()<0.5){
       const w = pick(DE_WORDEN);
-      return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'de', wide:false };
+      return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'de', wide:false, text:true };
     }
     const w = pick(HET_WORDEN);
-    return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'het', wide:false };
+    return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'het', wide:false, text:true };
   }
   if(r<0.65){
     // enkel of meervoud
     const woorden = ['boek','boeken','kat','katten','auto','autos','stoel','stoelen','jas','jassen'];
     const w = pick(woorden);
     const isMv = w.endsWith('en') || w.endsWith('os');
-    return { prompt:'Is "<b>'+w+'</b>" <b>enkelvoud</b> of <b>meervoud</b>?', options:['enkelvoud','meervoud'], correct:isMv?'meervoud':'enkelvoud', wide:false };
+    return { prompt:'Is "<b>'+w+'</b>" enkelvoud of meervoud?', options:['enkelvoud','meervoud'], correct:isMv?'meervoud':'enkelvoud', wide:true, text:true };
   }
   if(r<0.85){
     // welke zin begint goed? (hoofdletter + eindigt op punt)
@@ -2262,14 +2264,14 @@ function genTaal(progress){
     const z = pick(zinnen);
     const juist = z[0];
     const opties = [juist, z[1], z[2]].sort(()=>Math.random()-0.5);
-    return { prompt:'Welke zin is <b>juist</b> geschreven?', options:opties, correct:juist, wide:true };
+    return { prompt:'Welke zin is <b>juist</b> geschreven?', options:opties, correct:juist, wide:true, text:true };
   }
   // onregelmatig meervoud
   const [ev,mv] = pick(MV_IRRG);
   const fake1 = ev + 'en';
   const fake2 = ev + 's';
   const opts = [...new Set([mv, fake1, fake2])].sort(()=>Math.random()-0.5);
-  return { prompt:'Wat is het meervoud van <b>'+ev+'</b>?', options:opts, correct:mv, wide:true };
+  return { prompt:'Wat is het meervoud van <b>'+ev+'</b>?', options:opts, correct:mv, wide:true, text:true };
 }
 
 function makeQuestion(subject, progress){
@@ -2408,7 +2410,7 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   if(q.keyboard){ renderKeyboard(q, head); return; }
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
-  else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':''))+'">'+q.prompt+'</div>'; }
+  else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':(q.text?' text':'')))+'">'+q.prompt+'</div>'; }
   const ansHtml='<div class="answers'+(q.wide?' wide':'')+'">'+q.options.map(o=>'<button class="ans'+(q.wide?' wide':'')+'" data-v="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</button>').join('')+'</div>';
   mgcard.innerHTML=head+qhtml+ansHtml;
   if(q.draw){ const c=document.getElementById('qcanvas'); if(c){ const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); q.draw(g,c.width,c.height); } }
