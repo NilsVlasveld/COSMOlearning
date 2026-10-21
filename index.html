@@ -324,7 +324,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, lightsColor, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, blok, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, lightsColor, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played,score:b.score||0})), bh:d.blackhole.unlocked, visited:!!d.visited })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -333,7 +333,7 @@ function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function applySave(data){
   if(!data) return false;
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
-  level=data.level||1; semester=currentSemester(); arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
+  level=data.level||1; semester=currentSemester(); blok=data.blok||blokDefault(); arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.domeColor) ufo.dome=data.domeColor;
   if(data.lightsColor) lightsColor=data.lightsColor;
@@ -432,14 +432,17 @@ let active=0, cur=dims[active]; cur.visited=true;
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
 // Welke vakken horen bij welk leerjaar
-const LJ2_SUBJECTS = new Set(['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','vraagstukken','logica','lezen','twee','ruimte','spelling','woord','taal']);
-// Per-tafel: vanaf welke schoolProgress het beam zichtbaar is
-const TAFEL_UNLOCK = { tf2:0, tf10:0.08, tf5:0.30, tf3:0.52, tf4:0.63, tf1:0.74 };
+// Welke beams per leerjaar + blok
+// LJ2 Blok 1 = herhaling LJ1 (simpel), Blok 2 = huidige volledige set, Blok 3 = nog toe te voegen
+const LJ2_BLOK_SUBJECTS = {
+  1: ['rek1','rek2','tafels','tf2','twee','spelling','lezen','vraagstukken','logica'],
+  2: ['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf2','tf10','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte'],
+  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf5','tf10','woord','taal','lezen','vraagstukken','logica','ruimte'] // placeholder, nieuwe Blok 3-stof komt later
+};
 function beamActive(b){
   if(level===2){
-    if(!LJ2_SUBJECTS.has(b.subject)) return false;
-    if(b.subject in TAFEL_UNLOCK) return schoolProgress() >= TAFEL_UNLOCK[b.subject];
-    return true;
+    const list = LJ2_BLOK_SUBJECTS[blok] || LJ2_BLOK_SUBJECTS[2];
+    return list.includes(b.subject);
   }
   // Andere leerjaren: oude beams (zonder de LJ2-specifieke)
   if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal'].includes(b.subject)) return false;
@@ -456,14 +459,19 @@ const ACCEL=900, FRICTION=1.6;
 let curMaxV=420;
 let playerName='Speler';
 let level=1;    // leerjaar 1..6
+let blok=2;     // blok binnen leerjaar (1..10 per Pluspunt-boek)
+// Default blok op basis van maand (sep=1, okt-nov=2, dec-jan=3, feb=4, mrt=5, apr=6, mei=7, jun=8)
+function blokDefault(){
+  const m=new Date().getMonth()+1;
+  const map={9:1, 10:2, 11:2, 12:3, 1:3, 2:4, 3:5, 4:6, 5:7, 6:8, 7:8, 8:1};
+  return map[m]||2;
+}
 // Semester volgt automatisch het schooljaar: sep–jan = S1, feb–aug = S2
 function currentSemester(){ const m=new Date().getMonth()+1; return (m>=9 || m===1) ? 1 : 2; }
-// 0 (sep) → 1 (jun). Juli/aug = 1 (einde schooljaar).
-function schoolProgress(){
-  const m=new Date().getMonth()+1;
-  const idx = (m>=9) ? m-9 : m+3; // sep=0, okt=1, …, jun=9, jul=10, aug=11
-  return Math.max(0, Math.min(1, idx/9));
-}
+// Moeilijkheid hangt af van het blok (1..10) — niet meer van maand
+function blokProgress(){ return Math.max(0, Math.min(1, (blok-1)/9)); }
+// Legacy wrapper (oude generators)
+function schoolProgress(){ return blokProgress(); }
 let semester=currentSemester();
 
 // upgrades (totaal sterren) — type 'color' = kleurkiezer, 'toggle' = aan/uit (+ evt. stijlen)
@@ -2442,7 +2450,8 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   }
   const s=SUBJECTS[st.subject];
   const showS = true; // alle vakken hebben nu een begin/einde-split
-  const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
+  const blokPart = level===2 ? ' · Blok '+blok : (showS?' · S'+semester:'');
+  const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+blokPart+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
   if(q.connect){ renderConnect(q, head); return; }
   if(q.keyboard){ renderKeyboard(q, head); return; }
@@ -2876,13 +2885,22 @@ function showStart(returning){
     : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
   const nameField =
     '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
+  const blokRow = '<div id="blokrow" style="display:'+(level===2?'block':'none')+';margin-top:14px">'+
+    '<div class="ob-sentence">…in blok</div>'+
+    '<div class="grade-grid" style="grid-template-columns:repeat(5,1fr);gap:8px">'+
+      [1,2,3,4,5].map(bk=>'<button class="grade blokbtn'+(bk===blok?' sel':'')+'" data-b="'+bk+'" style="background:#C2E1F8;font-size:16px;padding:10px 4px">'+bk+'</button>').join('')+
+    '</div></div>';
   startcard.innerHTML = head + nameField +
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
     '<div class="grade-grid">'+grid+'</div>'+
+    blokRow+
     '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>'+
     (returning ? '<br><button class="btn ghost" id="obreset" style="margin-top:10px">Voortgang wissen</button>' : '');
-  startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
-    startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
+  function toggleBlokRow(){ const row=document.getElementById('blokrow'); if(row) row.style.display = (level===2?'block':'none'); }
+  startcard.querySelectorAll('.grade:not(.blokbtn)').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
+    startcard.querySelectorAll('.grade:not(.blokbtn)').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); toggleBlokRow(); });
+  startcard.querySelectorAll('.blokbtn').forEach(b=>b.onclick=()=>{ blok=parseInt(b.dataset.b);
+    startcard.querySelectorAll('.blokbtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
   const rb=document.getElementById('obreset'); if(rb) rb.onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
