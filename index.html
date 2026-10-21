@@ -67,6 +67,10 @@
   .qbox.seq { font-size:24px; letter-spacing:1px; }
   .qbox.draw { padding:12px; min-height:0; }
   .qbox.lees { flex-direction:column; gap:10px; font-size:17px; line-height:1.4; padding:16px 16px; }
+  .qbox.text { font-size:19px; line-height:1.4; padding:16px 18px; min-height:60px; text-align:center; word-break:normal; overflow-wrap:break-word; flex-direction:column; gap:10px; }
+  .qbox.text b { font-weight:800; }
+  .qbox.text .puzzle { font-size:30px; letter-spacing:3px; font-weight:800; }
+  .qbox.text .word { font-size:28px; font-weight:800; }
   .lees-text { font-weight:600; }
   .lees-q { font-weight:800; }
   .q-prompt { font-size:18px; font-weight:700; color:#fff; margin:2px 0 10px; }
@@ -288,9 +292,29 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   vraagstukken:{color:'#E8B547',core:'#F7E1A6',label:'Vraagstukken',icon:'quiz'},
   tafel2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel van 2',icon:'cross'},
   rek20:{color:'#97C459',core:'#D8EEBF',label:'Rekenen tot 20',icon:'rek20'},
-  te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'} };
+  te100:{color:'#5BA8E8',core:'#C2E1F8',label:'Getallen tot 100',icon:'blocks'},
+  twee:{color:'#C58BE8',core:'#E6CFF5',label:'Tweeklanken',icon:'ij'},
+  // LJ2 — 6 rekenen-beams + tafels (volgens Pluspunt-leerplan)
+  rek1:{color:'#F2A65A',core:'#FFD9B0',label:'Rekenen 1',icon:'r1'},
+  rek2:{color:'#97C459',core:'#D8EEBF',label:'Rekenen 2',icon:'r2'},
+  rek3:{color:'#5BA8E8',core:'#C2E1F8',label:'Rekenen 3',icon:'r3'},
+  rek4:{color:'#C58BE8',core:'#E6CFF5',label:'Rekenen 4',icon:'r4'},
+  rek5:{color:'#33C9C6',core:'#BEEDEB',label:'Rekenen 5',icon:'r5'},
+  rekmix:{color:'#F58BB0',core:'#FAD0DF',label:'Rekenen Mix',icon:'mix'},
+  tafels:{color:'#E8B547',core:'#F7E1A6',label:'Tafels Mix',icon:'mix'},
+  tf1:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 1',icon:'t1'},
+  tf2:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 2',icon:'t2'},
+  tf3:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 3',icon:'t3'},
+  tf4:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 4',icon:'t4'},
+  tf5:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 5',icon:'t5'},
+  tf10:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 10',icon:'t10'},
+  // LJ2 Nederlands
+  spelling:{color:'#F2A65A',core:'#FFD9B0',label:'Spelling',icon:'aa'},
+  woord:{color:'#6AD1A8',core:'#C6EFDD',label:'Woordenschat',icon:'ws'},
+  taal:{color:'#5BA8E8',core:'#C2E1F8',label:'Taal',icon:'de'},
+  meten:{color:'#33C9C6',core:'#BEEDEB',label:'Meten',icon:'ruler'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal','meten'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -301,7 +325,7 @@ function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveState
 function saveState(){
   if(wiping) return;
   try{
-    const data={ v:1, name:playerName, points, starsHere, active, level, semester, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, lightsColor, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
+    const data={ v:1, name:playerName, points, starsHere, active, level, semester, blok, arcadeConsumed, ufoColor:ufo.color, domeColor:ufo.dome, lightsColor, ufoModel, feat:{...feat}, equip:{...equip}, style:{...style},
       dims: dims.map(d=>({ beams:d.beams.map(b=>({x:b.x,y:b.y,subject:b.subject,played:b.played,score:b.score||0})), bh:d.blackhole.unlocked, visited:!!d.visited })) };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }catch(e){}
@@ -310,7 +334,7 @@ function loadRaw(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function applySave(data){
   if(!data) return false;
   playerName=data.name||playerName; points=data.points||0; starsHere=data.starsHere||0;
-  level=data.level||1; semester=data.semester||2; arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
+  level=data.level||1; semester=currentSemester(); blok=data.blok||blokDefault(); arcadeConsumed=data.arcadeConsumed||0; active=Math.min(data.active||0, dims.length-1);
   if(data.ufoColor) ufo.color=data.ufoColor;
   if(data.domeColor) ufo.dome=data.domeColor;
   if(data.lightsColor) lightsColor=data.lightsColor;
@@ -335,12 +359,30 @@ function applySave(data){
 
 // Standaard set van beams (10 vakken, verspreid over de ruimte)
 const STD_BEAMS=[
+  // Oude generieke beams (voor LJ1 en LJ3+)
   {x:560,y:480,subject:'rekenen'},{x:2300,y:520,subject:'logica'},{x:1400,y:1500,subject:'klok'},
   {x:700,y:2150,subject:'vormen'},{x:3250,y:700,subject:'geld'},{x:1100,y:900,subject:'tellen'},
   {x:3050,y:2000,subject:'ruimte'},{x:2450,y:2250,subject:'lezen'},{x:1900,y:620,subject:'ruimtelijk'},{x:2100,y:1050,subject:'vraagstukken'},
-  {x:1500,y:900,subject:'tafel2'},
-  {x:1800,y:2000,subject:'rek20'},
-  {x:3000,y:1400,subject:'te100'}
+  // LJ2 — Pluspunt-leerplan beams
+  {x:620,y:820,subject:'rek1'},
+  {x:1200,y:620,subject:'rek2'},
+  {x:1850,y:1200,subject:'rek3'},
+  {x:2600,y:820,subject:'rek4'},
+  {x:3150,y:1550,subject:'rek5'},
+  {x:1550,y:2200,subject:'rekmix'},
+  {x:2250,y:1800,subject:'tafels'},
+  {x:2850,y:2250,subject:'twee'},
+  {x:450,y:1600,subject:'spelling'},
+  {x:950,y:2050,subject:'woord'},
+  {x:1550,y:450,subject:'taal'},
+  // Tafels: elk apart beam, dynamisch zichtbaar per maand
+  {x:300,y:1150,subject:'tf2'},
+  {x:850,y:1500,subject:'tf10'},
+  {x:3300,y:1050,subject:'tf5'},
+  {x:3350,y:2150,subject:'tf3'},
+  {x:700,y:400,subject:'tf4'},
+  {x:3100,y:400,subject:'tf1'},
+  {x:1200,y:2400,subject:'meten'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -391,9 +433,24 @@ let active=0, cur=dims[active]; cur.visited=true;
 
 // 1 beam per vak: het zwarte gat opent zodra alle vakken gespeeld zijn
 // Beams filteren op leerjaar — nieuwe leerplan-beams verschijnen alleen bij hun leerjaar
+// Welke vakken horen bij welk leerjaar
+// Welke beams per leerjaar + blok
+// LJ2 Blok 1 = herhaling LJ1 (simpel), Blok 2 = huidige volledige set, Blok 3 = nog toe te voegen
+const LJ2_BLOK_SUBJECTS = {
+  1: ['rek1','rek2','tafels','tf2','twee','spelling','lezen','vraagstukken','logica'],
+  2: ['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf2','tf10','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte'],
+  // Blok 3: focus op getallen tot 100 (splitsen, assen, vergelijken), vlotte +/- tot 20,
+  // tafels van 2/5/10, vraagstukken met context, nieuwe Meten-beam (m/dm/cm).
+  // Nederlandse beams ongewijzigd (user: enkel wiskunde-materiaal gedeeld).
+  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf5','tf10','meten','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte']
+};
 function beamActive(b){
-  if(b.subject==='tellen' && level===2) return false;
-  if(['tafel2','rek20','te100'].includes(b.subject) && level!==2) return false;
+  if(level===2){
+    const list = LJ2_BLOK_SUBJECTS[blok] || LJ2_BLOK_SUBJECTS[2];
+    return list.includes(b.subject);
+  }
+  // Andere leerjaren: oude beams (zonder de LJ2-specifieke)
+  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal'].includes(b.subject)) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -407,7 +464,20 @@ const ACCEL=900, FRICTION=1.6;
 let curMaxV=420;
 let playerName='Speler';
 let level=1;    // leerjaar 1..6
-let semester=2; // 1 = begin schooljaar, 2 = einde schooljaar (moeilijker)
+let blok=2;     // blok binnen leerjaar (1..10 per Pluspunt-boek)
+// Default blok op basis van maand (sep=1, okt-nov=2, dec-jan=3, feb=4, mrt=5, apr=6, mei=7, jun=8)
+function blokDefault(){
+  const m=new Date().getMonth()+1;
+  const map={9:1, 10:2, 11:2, 12:3, 1:3, 2:4, 3:5, 4:6, 5:7, 6:8, 7:8, 8:1};
+  return map[m]||2;
+}
+// Semester volgt automatisch het schooljaar: sep–jan = S1, feb–aug = S2
+function currentSemester(){ const m=new Date().getMonth()+1; return (m>=9 || m===1) ? 1 : 2; }
+// Moeilijkheid hangt af van het blok (1..10) — niet meer van maand
+function blokProgress(){ return Math.max(0, Math.min(1, (blok-1)/9)); }
+// Legacy wrapper (oude generators)
+function schoolProgress(){ return blokProgress(); }
+let semester=currentSemester();
 
 // upgrades (totaal sterren) — type 'color' = kleurkiezer, 'toggle' = aan/uit (+ evt. stijlen)
 const UPGRADES=[
@@ -818,6 +888,16 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='rek20'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('≤20',0,1); }
   else if(s.icon==='blocks'){ // T-E blokjes
     g.lineWidth=1.6; g.strokeRect(-9,-6,4,12); g.strokeRect(-4,-6,4,12); g.strokeRect(1,-6,4,12); g.strokeRect(6,-2,5,5); }
+  else if(s.icon==='ij'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ij',0,1); }
+  else if(s.icon==='r1'||s.icon==='r2'||s.icon==='r3'||s.icon==='r4'||s.icon==='r5'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(s.icon.slice(1),0,1); }
+  else if(s.icon==='mix'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('MIX',0,1); }
+  else if(s.icon==='aa'){ g.font='800 15px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('aa',0,1); }
+  else if(s.icon==='ws'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ABC',0,1); }
+  else if(s.icon==='de'){ g.font='800 14px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('de',0,1); }
+  else if(s.icon && s.icon.startsWith('t') && /^t\d+$/.test(s.icon)){ g.font='800 12px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('×'+s.icon.slice(1),0,1); }
+  else if(s.icon==='ruler'){ // meetlat-icoon
+    g.lineWidth=2; g.strokeStyle=g.fillStyle; g.strokeRect(-11,-4,22,8);
+    for(let i=-8;i<=8;i+=4){ g.beginPath(); g.moveTo(i,-4); g.lineTo(i,0); g.stroke(); } }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -1158,23 +1238,13 @@ function q_LJ1_S2(){ // S2: rekenen tot 23, met brug over het tiental
   }
 }
 // Leerjaar 2
-function q_LJ2_S1(){ // S1: rekenen tot 100, tafels van 2/5/10, dubbel/helft
-  switch(ri(1,5)){
-    case 1: { const a=ri(20,70), b=ri(5,Math.max(6,Math.min(99-a,29))); return {q:a+' + '+b+' = ?', ans:a+b}; }
-    case 2: { const a=ri(30,99), b=ri(5,a-5); return {q:a+' − '+b+' = ?', ans:a-b}; }
-    case 3: { const t=pick([2,5,10]), b=ri(1,10); return {q:t+' × '+b+' = ?', ans:t*b}; }
-    case 4: { const a=ri(2,20); return {q:'dubbel van '+a+' = ?', ans:a*2}; }
-    default:{ const h=ri(2,15); return {q:'helft van '+(h*2)+' = ?', ans:h}; }
-  }
+function q_LJ2_S1(){ // S1: optellen & aftrekken tot 30
+  if(Math.random()<0.5){ const a=ri(5,25), b=ri(2,Math.min(30-a,15)); return {q:a+' + '+b+' = ?', ans:a+b}; }
+  const a=ri(10,30), b=ri(2,a-1); return {q:a+' − '+b+' = ?', ans:a-b};
 }
-function q_LJ2_S2(){ // S2: vlot tot 100 (brug), tafels 1..5 + 10, deeltafels
-  switch(ri(1,5)){
-    case 1: { let a,b; do{ a=ri(15,85); b=ri(6,40); }while((a%10)+(b%10)<10 || a+b>100); return {q:a+' + '+b+' = ?', ans:a+b}; }
-    case 2: { let a,b; do{ a=ri(25,99); b=ri(6,Math.min(a-1,45)); }while((a%10)>=(b%10)); return {q:a+' − '+b+' = ?', ans:a-b}; }
-    case 3: { const t=pick([2,3,4,5,10]), b=ri(2,10); return {q:t+' × '+b+' = ?', ans:t*b}; }
-    case 4: { const t=pick([2,3,4,5,10]), b=ri(2,10); return {q:(t*b)+' : '+t+' = ?', ans:b}; } // delen
-    default:{ const a=ri(2,25); return {q:'dubbel van '+a+' = ?', ans:a*2}; }
-  }
+function q_LJ2_S2(){ // S2: optellen & aftrekken tot 30
+  if(Math.random()<0.5){ const a=ri(5,25), b=ri(2,Math.min(30-a,15)); return {q:a+' + '+b+' = ?', ans:a+b}; }
+  const a=ri(10,30), b=ri(2,a-1); return {q:a+' − '+b+' = ?', ans:a-b};
 }
 // Leerjaar 3..6 (algemeen, semester verhoogt het getalbereik)
 function q_generic(){
@@ -1840,8 +1910,486 @@ function genTE100(progress){
   const right = picks.map(p=>({text:String(p.n), value:p.n})).sort(()=>Math.random()-0.5);
   return { connect:true, prompt:'Verbind elke T+E met het juiste getal', left, right };
 }
+// ===== TWEEKLANKEN — Nederlands LJ2 =====
+const TWEEKLANKEN={
+  ei:['trein','reis','geit','zeil','klein','plein','meid','wei','ei','veilig'],
+  ij:['wijn','prijs','fijn','ijs','pijp','vrij','tijd','mijn','krijt','blij'],
+  ou:['hout','oud','koud','touw','zout','vrouw','goud','woud','mout','kous'],
+  au:['saus','pauw','blauw','kauw','gauw','rauw','dauw','paus','taupe','applaus'],
+  ui:['huis','muis','tuin','duif','ruit','struik','buik','buit','kruid','fluit'],
+  eu:['deur','neus','leuk','reus','sleutel','keuken','jeugd','kleur','kneus','meubel'],
+  oe:['boek','koek','voet','moeder','broer','hoed','boer','poes','stoel','soep'],
+  ie:['dier','lief','kiezen','niet','vriend','ziek','piet','iemand','liedje','wiel']
+};
+function genTweeklanken(progress){
+  progress = progress||0;
+  const keys=Object.keys(TWEEKLANKEN);
+  const r=Math.random();
+  if(r<0.4){
+    // welk woord bevat tweeklank X?
+    const target=pick(keys);
+    const correct=pick(TWEEKLANKEN[target]);
+    const others=keys.filter(k=>k!==target);
+    const kA=pick(others);
+    const kB=pick(others.filter(k=>k!==kA));
+    let wrong1=pick(TWEEKLANKEN[kA].filter(w=>!w.includes(target)));
+    let wrong2=pick(TWEEKLANKEN[kB].filter(w=>!w.includes(target) && w!==wrong1));
+    if(!wrong1) wrong1=pick(TWEEKLANKEN[kA]);
+    if(!wrong2) wrong2=pick(TWEEKLANKEN[kB]);
+    const options=[correct,wrong1,wrong2].sort(()=>Math.random()-0.5);
+    return { prompt:'Welk woord bevat de klank <b>'+target+'</b>?', options, correct, wide:true, text:true };
+  }
+  if(r<0.78){
+    // vul de ontbrekende tweeklank in
+    const target=pick(keys);
+    const word=pick(TWEEKLANKEN[target].filter(w=>w.includes(target)));
+    if(!word) return genTweeklanken(progress);
+    const puzzle=word.replace(target,'__');
+    const others=keys.filter(k=>k!==target).sort(()=>Math.random()-0.5).slice(0,2);
+    const options=[target,others[0],others[1]].sort(()=>Math.random()-0.5);
+    return { prompt:'<div>Vul de klank aan:</div><div class="puzzle">'+puzzle+'</div>', options, correct:target, wide:false, text:true };
+  }
+  // verbind-lijnen: 4 woorden ↔ 4 tweeklanken
+  const picked=keys.slice().sort(()=>Math.random()-0.5).slice(0,4);
+  const left=picked.map(k=>{ const w=pick(TWEEKLANKEN[k].filter(x=>x.includes(k)))||pick(TWEEKLANKEN[k]); return {text:w,value:k}; });
+  const right=picked.map(k=>({text:k,value:k})).sort(()=>Math.random()-0.5);
+  return { connect:true, prompt:'Verbind elk woord met de juiste klank', left, right };
+}
+// ========================================
+// LJ2 PLUSPUNT — 6 Rekenen-beams + Tafels
+// Moeilijkheid groeit met schoolProgress() (sep=0 → jun=1)
+// ========================================
+
+// Rekenen 1 — Splitsen & aanvullen (tot 10 én tot 20/30, groeit per maand)
+function genRek1(progress){
+  const sp=schoolProgress();
+  const max = sp<0.1 ? 10 : sp<0.4 ? 20 : 30;
+  const r=Math.random();
+  if(r<0.25){
+    // tienvriendje / twintigvriendje: __ + x = 10 of 20
+    const target = (sp>0.15 && Math.random()<0.4) ? 20 : 10;
+    const a=ri(1,target-1);
+    return { prompt:a+' + __ = '+target, correct:String(target-a), keyboard:true };
+  }
+  if(r<0.5){
+    // aanvullen: a + __ = b
+    const b=ri(Math.max(5,Math.floor(max*0.4)),max); const a=ri(1,b-1);
+    return { prompt:a+' + __ = '+b, correct:String(b-a), keyboard:true };
+  }
+  if(r<0.7){
+    // splits
+    const whole=ri(5,max); const left=ri(1,whole-1); const right=whole-left;
+    return { prompt:'Splits '+whole+' in '+left+' en __', correct:String(right), keyboard:true };
+  }
+  if(r<0.85){
+    // aftrekken aanvul: 20 - __ = x
+    const base=(sp>0.15 && Math.random()<0.4)?20:10;
+    const ans=ri(1,base-1);
+    return { prompt:base+' − __ = '+ans, correct:String(base-ans), keyboard:true };
+  }
+  // directe +/- tot max
+  if(Math.random()<0.5){ const a=ri(1,max-1),b=ri(1,max-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+  const a=ri(3,max),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 2 — +/- met 2 en 3 termen, bereik groeit per maand
+function genRek2(progress){
+  const sp=schoolProgress();
+  const max = sp<0.1 ? 10 : sp<0.4 ? 20 : 30;
+  const r=Math.random();
+  if(r<0.35){
+    // 2-term
+    if(Math.random()<0.5){ const a=ri(2,max-1),b=ri(1,max-a); return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true }; }
+    const a=ri(5,max),b=ri(1,a-1); return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+  }
+  // 3-term
+  const kind=Math.random();
+  if(kind<0.4){ const a=ri(2,Math.floor(max*0.4)),b=ri(1,Math.floor(max*0.3)),c=ri(1,max-a-b); return { prompt:a+' + '+b+' + '+c+' = ?', correct:String(a+b+c), keyboard:true }; }
+  if(kind<0.75){ const a=ri(Math.floor(max*0.6),max),b=ri(1,Math.floor(max*0.25)),c=ri(1,a-b-1); return { prompt:a+' − '+b+' − '+c+' = ?', correct:String(a-b-c), keyboard:true }; }
+  // + en - gemengd
+  const a=ri(3,Math.floor(max*0.7)),b=ri(1,Math.floor(max*0.3)),c=ri(1,Math.max(1,a+b-1));
+  return { prompt:a+' + '+b+' − '+c+' = ?', correct:String(a+b-c), keyboard:true };
+}
+
+// Rekenen 3 — Getallen tot 20 + twintigveld + +/- zonder brug (Blok 1 Les 3-7)
+function drawTwintigveld(g,w,h,n){
+  // 2x10 rooster, kleur eerste n hokjes
+  const cols=10, rows=2;
+  const pad=10; const cw=(w-pad*2)/cols, ch=Math.min(cw,(h-pad*2)/rows);
+  const tot=cw*cols; const ox=(w-tot)/2; const oy=(h-ch*rows)/2;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const x=ox+c*cw, y=oy+r*ch;
+    const idx=r*cols+c;
+    g.fillStyle=idx<n?'#F58BB0':'#F5EFE3';
+    g.fillRect(x+2,y+2,cw-4,ch-4);
+    g.strokeStyle='#2A1E5E'; g.lineWidth=2; g.strokeRect(x+2,y+2,cw-4,ch-4);
+  }
+}
+function genRek3(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.25){
+    // twintigveld: hoeveel kleurtjes zie je?
+    const n=ri(5,20);
+    return { prompt:'Hoeveel hokjes zijn gekleurd?', correct:String(n), keyboard:true,
+      draw:(g,w,h)=>drawTwintigveld(g,w,h,n) };
+  }
+  if(r<0.45){
+    // vergelijken > of <
+    let a,b; do{ a=ri(1,20); b=ri(1,20); } while(a===b);
+    return { prompt:a+' ? '+b, options:['>','<','='].sort(()=>Math.random()-0.5), correct:a>b?'>':'<', wide:false };
+  }
+  if(r<0.65){
+    // ordenen van klein naar groot (3 getallen) — zorg voor 3 unieke opties
+    let nums, sorted, scrambled;
+    do {
+      nums=[]; while(nums.length<3){ const n=ri(1,20); if(!nums.includes(n)) nums.push(n); }
+      sorted=nums.slice().sort((a,b)=>a-b);
+      scrambled=nums.slice();
+    } while (scrambled.join()===sorted.join() || scrambled.join()===sorted.slice().reverse().join());
+    const reversed=sorted.slice().reverse();
+    const opts=[sorted.join(' · '), scrambled.join(' · '), reversed.join(' · ')].sort(()=>Math.random()-0.5);
+    return { prompt:'Welke rij gaat van klein naar groot?',
+      options:opts, correct:sorted.join(' · '), wide:true, text:true };
+  }
+  // +/- tot 20 zonder brug (eenheden-som < 10)
+  if(Math.random()<0.5){
+    let a,b; do{ a=ri(1,19); b=ri(1,20-a); } while((a%10)+(b%10)>=10);
+    return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true };
+  }
+  let a,b; do{ a=ri(5,20); b=ri(1,a); } while((a%10)<(b%10));
+  return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 4 — +/- tot 20 met brug + eerlijk verdelen (Blok 2 Les 3-5 + Blok 1 Les 8)
+function genRek4(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.2 && sp>0.05){
+    // eerlijk verdelen: 12 koekjes over 3 kinderen
+    const groups=pick([2,3,4,5]); const each=ri(2,6); const total=groups*each;
+    return { prompt:total+' koekjes verdeeld over '+groups+' kinderen. Hoeveel krijgt elk?',
+      correct:String(each), keyboard:true, text:true };
+  }
+  // optellen met brug
+  if(Math.random()<0.5){
+    let a,b; do{ a=ri(4,15); b=ri(3,15); } while((a%10)+(b%10)<10 || a+b>20);
+    return { prompt:a+' + '+b+' = ?', correct:String(a+b), keyboard:true };
+  }
+  // aftrekken met brug (eenheden a < eenheden b)
+  let a,b; do{ a=ri(11,20); b=ri(3,a-1); } while((a%10)>=(b%10));
+  return { prompt:a+' − '+b+' = ?', correct:String(a-b), keyboard:true };
+}
+
+// Rekenen 5 — Getallen tot 100 + T+E + honderdveld (Blok 2 Les 6-7)
+function drawHonderdveld(g,w,h,marked){
+  const cols=10, rows=10;
+  const size=Math.min((w-10)/cols,(h-10)/rows);
+  const ox=(w-size*cols)/2, oy=(h-size*rows)/2;
+  g.font='bold 10px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const n=r*10+c+1;
+    const x=ox+c*size, y=oy+r*size;
+    g.fillStyle=n===marked?'#F58BB0':'#F5EFE3';
+    g.fillRect(x,y,size-1,size-1);
+    g.strokeStyle='#2A1E5E'; g.lineWidth=1; g.strokeRect(x,y,size-1,size-1);
+    g.fillStyle=n===marked?'#fff':'#2A1E5E';
+    g.fillText(n, x+size/2, y+size/2);
+  }
+}
+function genRek5(progress){
+  const sp=schoolProgress();
+  const r=Math.random();
+  if(r<0.25){
+    // honderdveld: welk getal is gekleurd?
+    const n=ri(1,100);
+    return { prompt:'Welk getal is gekleurd?', correct:String(n), keyboard:true,
+      draw:(g,w,h)=>drawHonderdveld(g,w,h,n), wide:true };
+  }
+  if(r<0.45){
+    // T + E samen
+    const T=ri(1,9), E=ri(0,9);
+    if(Math.random()<0.5) return { prompt:T+' tientallen + '+E+' eenheden = ?', correct:String(T*10+E), keyboard:true, text:true };
+    const num=T*10+E;
+    return { prompt:'Hoeveel tientallen in '+num+'?', correct:String(T), keyboard:true, text:true };
+  }
+  if(r<0.6){
+    // vergelijken > of <
+    let a,b; do{ a=ri(20,99); b=ri(20,99); } while(a===b);
+    return { prompt:a+' ? '+b, options:['>','<','='].sort(()=>Math.random()-0.5), correct:a>b?'>':'<', wide:false };
+  }
+  if(r<0.78){
+    // getal vooraf/na: komt na 56 → 57
+    const n=ri(10,98);
+    if(Math.random()<0.5) return { prompt:'<div>Welk getal komt na</div><div class="word">'+n+'</div>', correct:String(n+1), keyboard:true, text:true };
+    return { prompt:'<div>Welk getal komt voor</div><div class="word">'+n+'</div>', correct:String(n-1), keyboard:true, text:true };
+  }
+  // optellen tienvoud
+  const T=ri(2,8), E=ri(1,9), b=ri(1,9);
+  return { prompt:(T*10+E)+' + '+b+' = ?', correct:String(T*10+E+b), keyboard:true };
+}
+
+// Rekenen Mix — random een van rek1..rek5 (gewogen naar maand)
+function genRekMix(progress){
+  const sp=schoolProgress();
+  // Vroeg in jaar: meer rek1/2; later ook rek3/4/5
+  const weights = sp<0.15 ? [0.2,0.2,0.3,0.2,0.1] :
+                  sp<0.35 ? [0.15,0.2,0.3,0.2,0.15] :
+                  sp<0.55 ? [0.15,0.15,0.25,0.25,0.2] :
+                            [0.1,0.15,0.2,0.3,0.25];
+  let r=Math.random(), acc=0;
+  const gens=[genRek1,genRek2,genRek3,genRek4,genRek5];
+  for(let i=0;i<5;i++){ acc+=weights[i]; if(r<acc) return gens[i](progress); }
+  return genRek3(progress);
+}
+
+// Tafels — maaltafels en deeltafels, groeit per maand
+// sep=×2, okt=+÷2, nov=+×10, dec=+×5, feb=+×3, mrt=+×4, apr=+×1 etc.
+function activeTafels(){
+  const sp=schoolProgress();
+  const list=[2]; // sep
+  if(sp>=0.08) list.push('÷2', 10, '÷10'); // okt (×10 en ÷10 er al bij)
+  if(sp>=0.30) list.push(5,'÷5');          // dec
+  if(sp>=0.52) list.push(3,'÷3');          // feb
+  if(sp>=0.63) list.push(4,'÷4');          // mrt
+  if(sp>=0.74) list.push(1,'÷1');          // apr
+  return list;
+}
+function genTafels(progress){
+  const act=activeTafels();
+  const choice=pick(act);
+  const b=ri(1,10);
+  if(typeof choice==='string' && choice.startsWith('÷')){
+    const t=parseInt(choice.slice(1));
+    return { prompt:(b*t)+' : '+t+' = ?', correct:String(b), keyboard:true };
+  }
+  return { prompt:b+' × '+choice+' = ?', correct:String(b*choice), keyboard:true };
+}
+// Eén tafel: × en ÷ gemixt (50/50)
+function genTafel(n){
+  const b=ri(1,10);
+  if(Math.random()<0.5) return { prompt:b+' × '+n+' = ?', correct:String(b*n), keyboard:true };
+  return { prompt:(b*n)+' : '+n+' = ?', correct:String(b), keyboard:true };
+}
+
+// ========================================
+// LJ2 NEDERLANDS — Spelling · Woordenschat · Taal
+// ========================================
+
+// ---- Spelling: lange/korte klanken + verdubbeling/verenkeling ----
+// korte klank → verdubbel medeklinker in meervoud: bal → ballen, kat → katten
+// lange klank → verenkel klinker in meervoud: baan → banen, poot → poten
+const SPELL_KORT=[
+  {ev:'bal',mv:'ballen',klank:'a'},{ev:'kat',mv:'katten',klank:'a'},{ev:'man',mv:'mannen',klank:'a'},
+  {ev:'pet',mv:'petten',klank:'e'},{ev:'bos',mv:'bossen',klank:'o'},{ev:'bus',mv:'bussen',klank:'u'},
+  {ev:'pop',mv:'poppen',klank:'o'},{ev:'kip',mv:'kippen',klank:'i'},{ev:'rat',mv:'ratten',klank:'a'},
+  {ev:'vis',mv:'vissen',klank:'i'}
+];
+const SPELL_LANG=[
+  {ev:'baan',mv:'banen',klank:'aa'},{ev:'poot',mv:'poten',klank:'oo'},{ev:'muur',mv:'muren',klank:'uu'},
+  {ev:'peer',mv:'peren',klank:'ee'},{ev:'boom',mv:'bomen',klank:'oo'},{ev:'maan',mv:'manen',klank:'aa'},
+  {ev:'vuur',mv:'vuren',klank:'uu'},{ev:'veer',mv:'veren',klank:'ee'}
+];
+// korte klank in open lettergreep (woorden met aa/oo/ee/uu geschreven kort uitgesproken) — niet van toepassing bij LJ2
+function genSpelling(progress){
+  const r=Math.random();
+  if(r<0.4){
+    // "wat is het meervoud van X?" (zoek verdubbeling of verenkeling)
+    const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+    const w = pick(list);
+    // 3 varianten als opties
+    let wrong1, wrong2;
+    if(list===SPELL_KORT){
+      // juist = verdubbeling (ballen); fouten: enkele medeklinker, verenkeling
+      wrong1 = w.ev + 'en';                    // bal → balen
+      wrong2 = w.ev.slice(0,-1) + w.ev.slice(-1) + 's'; // bal → bals
+    } else {
+      // juist = verenkeling (banen); fouten: dubbele klinker, verdubbeling
+      wrong1 = w.ev + 'en';                    // baan → baanen
+      wrong2 = w.ev.replace(/aa|ee|oo|uu/, m=>m[0]) + w.ev.slice(-1)+'en'; // baan → bannen
+    }
+    const opts = [...new Set([w.mv, wrong1, wrong2])].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat is het meervoud van <b>'+w.ev+'</b>?', options:opts, correct:w.mv, wide:true, text:true };
+  }
+  if(r<0.7){
+    // "a of aa?" — vul klank in. 1 streep voor korte klank, 2 voor lange.
+    const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+    const w = pick(list);
+    const puzzle = w.ev.replace(/aa|ee|oo|uu/, '__').replace(/[aeoui]/, '_');
+    const correctKlank = w.klank;
+    const kort = ['a','e','o','u','i'];
+    const lang = ['aa','ee','oo','uu'];
+    const andere = (correctKlank.length===2)
+      ? [pick(kort), pick(lang.filter(k=>k!==correctKlank))]
+      : [pick(lang), pick(kort.filter(k=>k!==correctKlank))];
+    const opts = [correctKlank, ...andere].sort(()=>Math.random()-0.5);
+    return { prompt:'<div>Welke klank hoort hier?</div><div class="puzzle">'+puzzle+'</div>', options:opts, correct:correctKlank, wide:false, text:true };
+  }
+  // "juist of fout?" — toon een woord, kies "juist" of een foute versie
+  const list = Math.random()<0.5 ? SPELL_KORT : SPELL_LANG;
+  const w = pick(list);
+  const juist = w.mv;
+  let fout;
+  if(list===SPELL_KORT) fout = w.ev + 'en'; else fout = w.ev + 'en';
+  const showJuist = Math.random()<0.5;
+  const shown = showJuist ? juist : fout;
+  return { prompt:'<div>Is dit juist gespeld?</div><div class="word">'+shown+'</div>', options:['juist','fout'], correct:showJuist?'juist':'fout', wide:true, text:true };
+}
+
+// ---- Woordenschat: synoniemen, tegenstellingen, samenstellingen ----
+const SYN=[
+  ['blij','vrolijk'],['boos','kwaad'],['bang','angstig'],['snel','vlug'],
+  ['mooi','prachtig'],['groot','enorm'],['klein','mini'],['stil','rustig'],
+  ['lief','aardig'],['vies','smerig'],['moe','slaperig'],['stout','ondeugend']
+];
+const TEG=[
+  ['groot','klein'],['hoog','laag'],['warm','koud'],['snel','traag'],
+  ['dik','dun'],['oud','jong'],['lang','kort'],['blij','verdrietig'],
+  ['licht','donker'],['vol','leeg'],['open','dicht'],['nat','droog'],
+  ['sterk','zwak'],['hard','zacht']
+];
+const SAM=[ // samenstellingen: deel1 + deel2 = woord
+  ['fiets','bel','fietsbel'],['tand','borstel','tandborstel'],['boek','tas','boekentas'],
+  ['speel','goed','speelgoed'],['brand','weer','brandweer'],['school','bank','schoolbank'],
+  ['voet','bal','voetbal'],['honden','hok','hondenhok'],['zonne','bloem','zonnebloem'],
+  ['melk','pak','melkpak'],['appel','sap','appelsap']
+];
+function genWoord(progress){
+  const r=Math.random();
+  if(r<0.35){
+    // synoniem
+    const [a,b] = pick(SYN);
+    const others = SYN.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
+    const opts = [b, ...others].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat betekent <b>hetzelfde</b> als "'+a+'"?', options:opts, correct:b, wide:true, text:true };
+  }
+  if(r<0.7){
+    // tegenstelling
+    const [a,b] = pick(TEG);
+    const others = TEG.filter(p=>p[0]!==a).sort(()=>Math.random()-0.5).slice(0,2).map(p=>p[1]);
+    const opts = [b, ...others].sort(()=>Math.random()-0.5);
+    return { prompt:'Wat is het <b>tegenovergestelde</b> van "'+a+'"?', options:opts, correct:b, wide:true, text:true };
+  }
+  // samenstelling
+  const [d1,d2,full] = pick(SAM);
+  const others = SAM.filter(s=>s[2]!==full).sort(()=>Math.random()-0.5).slice(0,2).map(s=>s[2]);
+  const opts = [full, ...others].sort(()=>Math.random()-0.5);
+  return { prompt:'<b>'+d1+'</b> + <b>'+d2+'</b> = ?', options:opts, correct:full, wide:true, text:true };
+}
+
+// ---- Taal: lidwoord · enkel/meervoud · hoofdletter+punt ----
+const DE_WORDEN=['boom','stoel','deur','auto','hond','tafel','jas','bal','tuin','klas','meester','bloem','trein','straat','vriend'];
+const HET_WORDEN=['huis','boek','paard','raam','kind','spel','feest','bed','eten','schip','meisje','jongetje','dier','potlood','blad'];
+const MV_IRRG=[ // onregelmatige meervouden
+  ['kind','kinderen'],['ei','eieren'],['koe','koeien'],['vlo','vlooien'],['stad','steden'],['schip','schepen']
+];
+function genTaal(progress){
+  const r=Math.random();
+  if(r<0.4){
+    // de of het?
+    if(Math.random()<0.5){
+      const w = pick(DE_WORDEN);
+      return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'de', wide:false, text:true };
+    }
+    const w = pick(HET_WORDEN);
+    return { prompt:'__ <b>'+w+'</b>', options:['de','het','een'].sort(()=>Math.random()-0.5), correct:'het', wide:false, text:true };
+  }
+  if(r<0.65){
+    // enkel of meervoud
+    const woorden = ['boek','boeken','kat','katten','auto','autos','stoel','stoelen','jas','jassen'];
+    const w = pick(woorden);
+    const isMv = w.endsWith('en') || w.endsWith('os');
+    return { prompt:'Is "<b>'+w+'</b>" enkelvoud of meervoud?', options:['enkelvoud','meervoud'], correct:isMv?'meervoud':'enkelvoud', wide:true, text:true };
+  }
+  if(r<0.85){
+    // welke zin begint goed? (hoofdletter + eindigt op punt)
+    const zinnen=[
+      ['De hond blaft.','de hond blaft.','De hond blaft','de hond blaft'],
+      ['Mama kookt soep.','mama kookt soep.','Mama kookt soep','mama kookt soep'],
+      ['Ik ga naar school.','ik ga naar school.','Ik ga naar school','ik ga naar school'],
+      ['De zon schijnt.','de zon schijnt.','De zon schijnt','de zon schijnt']
+    ];
+    const z = pick(zinnen);
+    const juist = z[0];
+    const opties = [juist, z[1], z[2]].sort(()=>Math.random()-0.5);
+    return { prompt:'Welke zin is <b>juist</b> geschreven?', options:opties, correct:juist, wide:true, text:true };
+  }
+  // onregelmatig meervoud
+  const [ev,mv] = pick(MV_IRRG);
+  const fake1 = ev + 'en';
+  const fake2 = ev + 's';
+  const opts = [...new Set([mv, fake1, fake2])].sort(()=>Math.random()-0.5);
+  return { prompt:'Wat is het meervoud van <b>'+ev+'</b>?', options:opts, correct:mv, wide:true, text:true };
+}
+
+// ========================================
+// LJ2 METEN — m / dm / cm (Blok 3)
+// ========================================
+const MEET_OBJECTEN = [
+  // [naam, juiste eenheid, getal-range min, max]
+  ['een deur',         'm',  1, 2],
+  ['een huis',         'm',  5, 10],
+  ['een boom',         'm',  3, 15],
+  ['een auto',         'm',  3, 5],
+  ['een tafel',        'm',  1, 2],
+  ['een voetbalveld',  'm',  60, 110],
+  ['een rekenstaafje', 'dm', 1, 1],
+  ['een boek',         'dm', 2, 4],
+  ['een papier A4',    'dm', 2, 3],
+  ['een ringmap',      'dm', 3, 4],
+  ['een blikje',       'cm', 10, 15],
+  ['een postkaart',    'cm', 10, 15],
+  ['een potlood',      'cm', 10, 20],
+  ['een gum',          'cm', 3, 6],
+  ['een lineaal',      'cm', 20, 30],
+  ['een vinger',       'cm', 5, 10]
+];
+function genMeten(progress){
+  const r=Math.random();
+  if(r<0.6){
+    // "Wat is de juiste eenheid?"
+    const [naam, eenheid, lo, hi] = pick(MEET_OBJECTEN);
+    const getal = ri(lo, hi);
+    return {
+      prompt:'<div>Hoe meet je '+naam+'?</div><div class="word">'+naam+' ≈ '+getal+' __</div>',
+      options:['m','dm','cm'].sort(()=>Math.random()-0.5),
+      correct:eenheid, wide:false, text:true
+    };
+  }
+  if(r<0.85){
+    // Welke eenheid past bij dit getal + object?
+    // bv. "Een deur is zowat 1 ...?" multiple choice
+    const [naam, eenheid, lo, hi] = pick(MEET_OBJECTEN);
+    const getal = ri(lo, hi);
+    const prompt = '<div>Vul in: '+naam+' is ongeveer '+getal+' lang.</div>';
+    return { prompt, options:['m','dm','cm'].sort(()=>Math.random()-0.5), correct:eenheid, wide:false, text:true };
+  }
+  // Omrekenen 1 m = 10 dm, 1 dm = 10 cm, 1 m = 100 cm
+  const type=Math.random();
+  if(type<0.4) return { prompt:'1 m = __ dm', correct:'10', keyboard:true, text:true };
+  if(type<0.7) return { prompt:'1 dm = __ cm', correct:'10', keyboard:true, text:true };
+  return { prompt:'1 m = __ cm', correct:'100', keyboard:true, text:true };
+}
+
 function makeQuestion(subject, progress){
   progress = progress||0;
+  if(subject==='meten') return genMeten(progress);
+  if(subject==='rek1') return genRek1(progress);
+  if(subject==='rek2') return genRek2(progress);
+  if(subject==='rek3') return genRek3(progress);
+  if(subject==='rek4') return genRek4(progress);
+  if(subject==='rek5') return genRek5(progress);
+  if(subject==='rekmix') return genRekMix(progress);
+  if(subject==='tafels') return genTafels(progress);
+  if(subject==='tf1') return genTafel(1);
+  if(subject==='tf2') return genTafel(2);
+  if(subject==='tf3') return genTafel(3);
+  if(subject==='tf4') return genTafel(4);
+  if(subject==='tf5') return genTafel(5);
+  if(subject==='tf10') return genTafel(10);
+  if(subject==='spelling') return genSpelling(progress);
+  if(subject==='woord') return genWoord(progress);
+  if(subject==='taal') return genTaal(progress);
   if(subject==='rekenen'){ const d=genMath(); return { prompt:d.q, seq:false, correct:String(d.ans), keyboard:true }; }
   if(subject==='logica'){ const d=genSeq(); return { prompt:d.q, seq:true, correct:String(d.ans), keyboard:true }; }
   if(subject==='klok') return genKlok();
@@ -1855,6 +2403,7 @@ function makeQuestion(subject, progress){
   if(subject==='tafel2') return genTafel2(progress);
   if(subject==='rek20') return genRek20(progress);
   if(subject==='te100') return genTE100(progress);
+  if(subject==='twee') return genTweeklanken(progress);
   return { prompt:'?', options:['1','2','3'], correct:'1', wide:false };
 }
 // ===== VRAAGSTUKKEN — echte rekencontext =====
@@ -1959,13 +2508,14 @@ function nextQuestion(){ const st=mgState; if(!st) return; if(st.i>=st.total){ s
   }
   const s=SUBJECTS[st.subject];
   const showS = true; // alle vakken hebben nu een begin/einde-split
-  const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+(showS?' · S'+semester:'')+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
+  const blokPart = level===2 ? ' · Blok '+blok : (showS?' · S'+semester:'');
+  const head='<div class="mg-top"><span class="pill">'+s.label+' · LJ'+level+blokPart+'</span><span class="pill">Vraag '+(st.i+1)+' / '+st.total+'</span></div>';
   if(q.fill){ renderFill(q, head); return; }
   if(q.connect){ renderConnect(q, head); return; }
   if(q.keyboard){ renderKeyboard(q, head); return; }
   let qhtml;
   if(q.draw){ qhtml='<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'; }
-  else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':''))+'">'+q.prompt+'</div>'; }
+  else { qhtml='<div class="qbox'+(q.lees?' lees':(q.seq?' seq':(q.text?' text':'')))+'">'+q.prompt+'</div>'; }
   const ansHtml='<div class="answers'+(q.wide?' wide':'')+'">'+q.options.map(o=>'<button class="ans'+(q.wide?' wide':'')+'" data-v="'+String(o).replace(/"/g,'&quot;')+'">'+o+'</button>').join('')+'</div>';
   mgcard.innerHTML=head+qhtml+ansHtml;
   if(q.draw){ const c=document.getElementById('qcanvas'); if(c){ const g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); q.draw(g,c.width,c.height); } }
@@ -2071,7 +2621,7 @@ function renderKeyboard(q, head){
   let typed=''; const correct=q.correct; const maxLen=Math.max(3, String(correct).length+1);
   const qhtml = q.draw
     ? '<div class="q-prompt">'+q.prompt+'</div><div class="qbox draw"><canvas id="qcanvas" width="220" height="150"></canvas></div>'
-    : '<div class="qbox'+(q.seq?' seq':'')+(q.lees?' lees':'')+'">'+q.prompt+'</div>';
+    : '<div class="qbox'+(q.seq?' seq':'')+(q.lees?' lees':'')+(q.text?' text':'')+'">'+q.prompt+'</div>';
   const keys=['7','8','9','4','5','6','1','2','3','←','0','OK'];
   const keysHtml=keys.map(k=>{
     const cls = k==='OK'?'kb-key kb-ok' : k==='←'?'kb-key kb-del' : 'kb-key';
@@ -2393,22 +2943,22 @@ function showStart(returning){
     : '<div class="mg-msg ob-hi">Hoi ruimtevaarder! 🛸</div><div class="ob-sentence">Mijn naam is…</div>';
   const nameField =
     '<input class="ob-input" id="obname" maxlength="14" placeholder="tik je naam" autocomplete="off" value="'+(hasName()?playerName:'')+'">';
-  const semrow =
-    '<div class="ob-sentence" style="margin-top:12px">Wanneer in het schooljaar?</div>'+
-    '<div class="semrow">'+
-      '<button class="lvlbtn sembtn'+(semester===1?' sel':'')+'" data-s="1">Begin van \'t jaar</button>'+
-      '<button class="lvlbtn sembtn'+(semester===2?' sel':'')+'" data-s="2">Einde van \'t jaar</button>'+
-    '</div>';
+  const blokRow = '<div id="blokrow" style="display:'+(level===2?'block':'none')+';margin-top:14px">'+
+    '<div class="ob-sentence">…in blok</div>'+
+    '<div class="grade-grid" style="grid-template-columns:repeat(5,1fr);gap:8px">'+
+      [1,2,3,4,5].map(bk=>'<button class="grade blokbtn'+(bk===blok?' sel':'')+'" data-b="'+bk+'" style="background:#C2E1F8;font-size:16px;padding:10px 4px">'+bk+'</button>').join('')+
+    '</div></div>';
   startcard.innerHTML = head + nameField +
     '<div class="ob-sentence" style="margin-top:14px">…en ik zit in het</div>'+
     '<div class="grade-grid">'+grid+'</div>'+
-    semrow+
+    blokRow+
     '<button class="btn" id="startbtn" style="margin-top:16px;font-size:19px">Vliegen maar! 🚀</button>'+
     (returning ? '<br><button class="btn ghost" id="obreset" style="margin-top:10px">Voortgang wissen</button>' : '');
-  startcard.querySelectorAll('.grade').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
-    startcard.querySelectorAll('.grade').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
-  startcard.querySelectorAll('.sembtn').forEach(b=>b.onclick=()=>{ semester=parseInt(b.dataset.s);
-    startcard.querySelectorAll('.sembtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
+  function toggleBlokRow(){ const row=document.getElementById('blokrow'); if(row) row.style.display = (level===2?'block':'none'); }
+  startcard.querySelectorAll('.grade:not(.blokbtn)').forEach(b=>b.onclick=()=>{ level=parseInt(b.dataset.l);
+    startcard.querySelectorAll('.grade:not(.blokbtn)').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); toggleBlokRow(); });
+  startcard.querySelectorAll('.blokbtn').forEach(b=>b.onclick=()=>{ blok=parseInt(b.dataset.b);
+    startcard.querySelectorAll('.blokbtn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); });
   startEl.classList.add('show');
   const rb=document.getElementById('obreset'); if(rb) rb.onclick=()=>{ if(confirm('Voortgang wissen en opnieuw beginnen?')){ wiping=true; localStorage.removeItem(SAVE_KEY); location.reload(); } };
   const inp=document.getElementById('obname'); if(inp) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },120);
