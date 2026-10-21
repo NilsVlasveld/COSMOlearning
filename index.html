@@ -311,9 +311,10 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   // LJ2 Nederlands
   spelling:{color:'#F2A65A',core:'#FFD9B0',label:'Spelling',icon:'aa'},
   woord:{color:'#6AD1A8',core:'#C6EFDD',label:'Woordenschat',icon:'ws'},
-  taal:{color:'#5BA8E8',core:'#C2E1F8',label:'Taal',icon:'de'} };
+  taal:{color:'#5BA8E8',core:'#C2E1F8',label:'Taal',icon:'de'},
+  meten:{color:'#33C9C6',core:'#BEEDEB',label:'Meten',icon:'ruler'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal','meten'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -380,7 +381,8 @@ const STD_BEAMS=[
   {x:3300,y:1050,subject:'tf5'},
   {x:3350,y:2150,subject:'tf3'},
   {x:700,y:400,subject:'tf4'},
-  {x:3100,y:400,subject:'tf1'}
+  {x:3100,y:400,subject:'tf1'},
+  {x:1200,y:2400,subject:'meten'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -437,7 +439,10 @@ let active=0, cur=dims[active]; cur.visited=true;
 const LJ2_BLOK_SUBJECTS = {
   1: ['rek1','rek2','tafels','tf2','twee','spelling','lezen','vraagstukken','logica'],
   2: ['rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf2','tf10','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte'],
-  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf5','tf10','woord','taal','lezen','vraagstukken','logica','ruimte'] // placeholder, nieuwe Blok 3-stof komt later
+  // Blok 3: focus op getallen tot 100 (splitsen, assen, vergelijken), vlotte +/- tot 20,
+  // tafels van 2/5/10, vraagstukken met context, nieuwe Meten-beam (m/dm/cm).
+  // Nederlandse beams ongewijzigd (user: enkel wiskunde-materiaal gedeeld).
+  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf5','tf10','meten','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte']
 };
 function beamActive(b){
   if(level===2){
@@ -890,6 +895,9 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='ws'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ABC',0,1); }
   else if(s.icon==='de'){ g.font='800 14px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('de',0,1); }
   else if(s.icon && s.icon.startsWith('t') && /^t\d+$/.test(s.icon)){ g.font='800 12px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('×'+s.icon.slice(1),0,1); }
+  else if(s.icon==='ruler'){ // meetlat-icoon
+    g.lineWidth=2; g.strokeStyle=g.fillStyle; g.strokeRect(-11,-4,22,8);
+    for(let i=-8;i<=8;i+=4){ g.beginPath(); g.moveTo(i,-4); g.lineTo(i,0); g.stroke(); } }
   g.restore();
 }
 function drawBlackhole(bh){
@@ -2314,8 +2322,58 @@ function genTaal(progress){
   return { prompt:'Wat is het meervoud van <b>'+ev+'</b>?', options:opts, correct:mv, wide:true, text:true };
 }
 
+// ========================================
+// LJ2 METEN — m / dm / cm (Blok 3)
+// ========================================
+const MEET_OBJECTEN = [
+  // [naam, juiste eenheid, getal-range min, max]
+  ['een deur',         'm',  1, 2],
+  ['een huis',         'm',  5, 10],
+  ['een boom',         'm',  3, 15],
+  ['een auto',         'm',  3, 5],
+  ['een tafel',        'm',  1, 2],
+  ['een voetbalveld',  'm',  60, 110],
+  ['een rekenstaafje', 'dm', 1, 1],
+  ['een boek',         'dm', 2, 4],
+  ['een papier A4',    'dm', 2, 3],
+  ['een ringmap',      'dm', 3, 4],
+  ['een blikje',       'cm', 10, 15],
+  ['een postkaart',    'cm', 10, 15],
+  ['een potlood',      'cm', 10, 20],
+  ['een gum',          'cm', 3, 6],
+  ['een lineaal',      'cm', 20, 30],
+  ['een vinger',       'cm', 5, 10]
+];
+function genMeten(progress){
+  const r=Math.random();
+  if(r<0.6){
+    // "Wat is de juiste eenheid?"
+    const [naam, eenheid, lo, hi] = pick(MEET_OBJECTEN);
+    const getal = ri(lo, hi);
+    return {
+      prompt:'<div>Hoe meet je '+naam+'?</div><div class="word">'+naam+' ≈ '+getal+' __</div>',
+      options:['m','dm','cm'].sort(()=>Math.random()-0.5),
+      correct:eenheid, wide:false, text:true
+    };
+  }
+  if(r<0.85){
+    // Welke eenheid past bij dit getal + object?
+    // bv. "Een deur is zowat 1 ...?" multiple choice
+    const [naam, eenheid, lo, hi] = pick(MEET_OBJECTEN);
+    const getal = ri(lo, hi);
+    const prompt = '<div>Vul in: '+naam+' is ongeveer '+getal+' lang.</div>';
+    return { prompt, options:['m','dm','cm'].sort(()=>Math.random()-0.5), correct:eenheid, wide:false, text:true };
+  }
+  // Omrekenen 1 m = 10 dm, 1 dm = 10 cm, 1 m = 100 cm
+  const type=Math.random();
+  if(type<0.4) return { prompt:'1 m = __ dm', correct:'10', keyboard:true, text:true };
+  if(type<0.7) return { prompt:'1 dm = __ cm', correct:'10', keyboard:true, text:true };
+  return { prompt:'1 m = __ cm', correct:'100', keyboard:true, text:true };
+}
+
 function makeQuestion(subject, progress){
   progress = progress||0;
+  if(subject==='meten') return genMeten(progress);
   if(subject==='rek1') return genRek1(progress);
   if(subject==='rek2') return genRek2(progress);
   if(subject==='rek3') return genRek3(progress);
