@@ -2109,9 +2109,9 @@ function genRek5(progress){
   if(r<0.45){
     // T + E samen
     const T=ri(1,9), E=ri(0,9);
-    if(Math.random()<0.5) return { prompt:T+' tientallen + '+E+' eenheden = ?', correct:String(T*10+E), keyboard:true };
+    if(Math.random()<0.5) return { prompt:T+' tientallen + '+E+' eenheden = ?', correct:String(T*10+E), keyboard:true, text:true };
     const num=T*10+E;
-    return { prompt:'Hoeveel tientallen in '+num+'?', correct:String(T), keyboard:true };
+    return { prompt:'Hoeveel tientallen in '+num+'?', correct:String(T), keyboard:true, text:true };
   }
   if(r<0.6){
     // vergelijken > of <
@@ -2121,8 +2121,8 @@ function genRek5(progress){
   if(r<0.78){
     // getal vooraf/na: komt na 56 → 57
     const n=ri(10,98);
-    if(Math.random()<0.5) return { prompt:'Welk getal komt <b>na</b> '+n+'?', correct:String(n+1), keyboard:true };
-    return { prompt:'Welk getal komt <b>voor</b> '+n+'?', correct:String(n-1), keyboard:true };
+    if(Math.random()<0.5) return { prompt:'<div>Welk getal komt na</div><div class="word">'+n+'</div>', correct:String(n+1), keyboard:true, text:true };
+    return { prompt:'<div>Welk getal komt voor</div><div class="word">'+n+'</div>', correct:String(n-1), keyboard:true, text:true };
   }
   // optellen tienvoud
   const T=ri(2,8), E=ri(1,9), b=ri(1,9);
