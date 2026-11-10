@@ -308,13 +308,15 @@ const SUBJECTS={ rekenen:{color:'#FFD24A',core:'#FFE7A0',label:'Rekenen',icon:'p
   tf4:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 4',icon:'t4'},
   tf5:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 5',icon:'t5'},
   tf10:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 10',icon:'t10'},
+  tf4m:{color:'#F58BB0',core:'#FAD0DF',label:'Tafel 4 ×',icon:'t4m'},
+  tf2510:{color:'#E8B547',core:'#F7E1A6',label:'Tafels 2·5·10',icon:'t2510'},
   // LJ2 Nederlands
   spelling:{color:'#F2A65A',core:'#FFD9B0',label:'Spelling',icon:'aa'},
   woord:{color:'#6AD1A8',core:'#C6EFDD',label:'Woordenschat',icon:'ws'},
   taal:{color:'#5BA8E8',core:'#C2E1F8',label:'Taal',icon:'de'},
   meten:{color:'#33C9C6',core:'#BEEDEB',label:'Meten',icon:'ruler'} };
 // volgorde van de vakken (1 beam per vak per ruimte)
-const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal','meten'];
+const SUBJECT_ORDER=['rekenen','vraagstukken','logica','klok','vormen','geld','tellen','ruimte','ruimtelijk','lezen','tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','tf4m','tf2510','spelling','woord','taal','meten'];
 const PALETTE=['#33C9C6','#6AD1A8','#F2A65A','#C58BE8','#5BA8E8','#F58BB0','#FFD24A'];
 const BH_GOAL=100;
 
@@ -382,7 +384,9 @@ const STD_BEAMS=[
   {x:3350,y:2150,subject:'tf3'},
   {x:700,y:400,subject:'tf4'},
   {x:3100,y:400,subject:'tf1'},
-  {x:1200,y:2400,subject:'meten'}
+  {x:1200,y:2400,subject:'meten'},
+  {x:2200,y:500,subject:'tf2510'},
+  {x:500,y:2500,subject:'tf4m'}
 ];
 // 10 stelsels met eigen kleuren, kaart-posities en netwerk-verbindingen (bidirectioneel)
 // mapPos: relatieve x,y op de kaart (0-1)
@@ -442,7 +446,10 @@ const LJ2_BLOK_SUBJECTS = {
   // Blok 3: focus op getallen tot 100 (splitsen, assen, vergelijken), vlotte +/- tot 20,
   // tafels van 2/5/10, vraagstukken met context, nieuwe Meten-beam (m/dm/cm).
   // Nederlandse beams ongewijzigd (user: enkel wiskunde-materiaal gedeeld).
-  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf10','meten','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte']
+  3: ['rek3','rek4','rek5','rekmix','tafels','tf2','tf10','meten','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte'],
+  // Blok 4: tafels 2/5/10 samen in één combi-beam (× en ÷ door elkaar),
+  // + nieuwe Tafel 4 (alleen vermenigvuldigen), + Meten + alle Ned/andere.
+  4: ['rek3','rek4','rek5','rekmix','tf2510','tf4m','meten','twee','spelling','woord','taal','lezen','vraagstukken','logica','ruimte']
 };
 function beamActive(b){
   if(level===2){
@@ -450,7 +457,7 @@ function beamActive(b){
     return list.includes(b.subject);
   }
   // Andere leerjaren: oude beams (zonder de LJ2-specifieke)
-  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','spelling','woord','taal'].includes(b.subject)) return false;
+  if(['tafel2','rek20','te100','twee','rek1','rek2','rek3','rek4','rek5','rekmix','tafels','tf1','tf2','tf3','tf4','tf5','tf10','tf4m','tf2510','spelling','woord','taal','meten'].includes(b.subject)) return false;
   return true;
 }
 function activeBeams(d){ return d.beams.filter(beamActive); }
@@ -895,6 +902,8 @@ function drawBeamIcon(g,b,s){
   else if(s.icon==='ws'){ g.font='800 11px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ABC',0,1); }
   else if(s.icon==='de'){ g.font='800 14px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('de',0,1); }
   else if(s.icon && s.icon.startsWith('t') && /^t\d+$/.test(s.icon)){ g.font='800 12px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('×'+s.icon.slice(1),0,1); }
+  else if(s.icon==='t4m'){ g.font='800 12px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('×4',0,1); }
+  else if(s.icon==='t2510'){ g.font='800 8px -apple-system,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('×2·5·10',0,1); }
   else if(s.icon==='ruler'){ // meetlat-icoon
     g.lineWidth=2; g.strokeStyle=g.fillStyle; g.strokeRect(-11,-4,22,8);
     for(let i=-8;i<=8;i+=4){ g.beginPath(); g.moveTo(i,-4); g.lineTo(i,0); g.stroke(); } }
@@ -2171,6 +2180,18 @@ function genTafel(n){
   if(Math.random()<0.5) return { prompt:b+' × '+n+' = ?', correct:String(b*n), keyboard:true };
   return { prompt:(b*n)+' : '+n+' = ?', correct:String(b), keyboard:true };
 }
+// Eén tafel: alleen vermenigvuldigen (voor nieuwe maaltafel-introductie)
+function genTafelMaal(n){
+  const b=ri(1,10);
+  return { prompt:b+' × '+n+' = ?', correct:String(b*n), keyboard:true };
+}
+// Combi-beam: tafels 2, 5 en 10 door elkaar (× én ÷)
+function genTafels2510(){
+  const n=pick([2,5,10]);
+  const b=ri(1,10);
+  if(Math.random()<0.5) return { prompt:b+' × '+n+' = ?', correct:String(b*n), keyboard:true };
+  return { prompt:(b*n)+' : '+n+' = ?', correct:String(b), keyboard:true };
+}
 
 // ========================================
 // LJ2 NEDERLANDS — Spelling · Woordenschat · Taal
@@ -2387,6 +2408,8 @@ function makeQuestion(subject, progress){
   if(subject==='tf4') return genTafel(4);
   if(subject==='tf5') return genTafel(5);
   if(subject==='tf10') return genTafel(10);
+  if(subject==='tf4m') return genTafelMaal(4);
+  if(subject==='tf2510') return genTafels2510();
   if(subject==='spelling') return genSpelling(progress);
   if(subject==='woord') return genWoord(progress);
   if(subject==='taal') return genTaal(progress);
